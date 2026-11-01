@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="OpenIoTwx">
   <rect width="64" height="64" rx="14" fill="#1649c9"/>
-  <circle cx="25" cy="33" r="13.5" fill="none" stroke="#fff" stroke-width="7"/>
-  <path d="M40 50 L51.5 16" fill="none" stroke="#93c5fd" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="25.5" cy="32" r="16" fill="none" stroke="#fff" stroke-width="5"/>
+  <path d="M41.5 53 L52.5 11" fill="none" stroke="#dbeafe" stroke-width="4.4" stroke-linecap="round"/>
 </svg>
