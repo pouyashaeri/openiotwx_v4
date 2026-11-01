@@ -181,6 +181,7 @@ export type NewStation = {
   expectedMetrics?: string[];
   latitude?: number | null;
   longitude?: number | null;
+  elevation?: number | null;
   ncarNetwork?: boolean;
 };
 
@@ -192,8 +193,8 @@ export async function createStations(ownerId: string, items: NewStation[]) {
     const k = newStationKey();
     const rows = await sql.query<StationRow>(
       `insert into stations (owner_id, plan_id, slug, name, description, config_id, link, expected_metrics,
-         latitude, longitude, api_key_hash, api_key_hint, ncar_network, ncar_joined_at, is_public)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, case when $13::bool then now() end, $13::bool) returning ${STATION_COLS}`,
+         latitude, longitude, elevation_m, api_key_hash, api_key_hint, ncar_network, ncar_joined_at, is_public)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $11, $12, $13, case when $13::bool then now() end, $13::bool) returning ${STATION_COLS}`,
       [
         ownerId,
         item.planId ?? null,
@@ -208,6 +209,7 @@ export async function createStations(ownerId: string, items: NewStation[]) {
         k.hash,
         k.hint,
         item.ncarNetwork ?? false,
+        item.elevation ?? null,
       ],
     );
     out.push({ station: rows[0], apiKey: k.key });
@@ -227,6 +229,7 @@ export async function updateStation(
     gatewayId?: string | null;
     latitude?: number | null;
     longitude?: number | null;
+    elevation?: number | null;
     status?: "active" | "disabled";
     rateLimitPerMin?: number;
     ownerId?: string;
@@ -260,6 +263,7 @@ export async function updateStation(
        gateway_id = case when $14::bool then nullif($15, '') else gateway_id end,
        latitude = case when $6::bool then $7 else latitude end,
        longitude = case when $6::bool then $8 else longitude end,
+       elevation_m = case when $16::bool then $17 else elevation_m end,
        status = case when $2::bool then coalesce($9, status) else status end,
        rate_limit_per_min = case when $2::bool then coalesce($10, rate_limit_per_min) else rate_limit_per_min end,
        owner_id = case when $2::bool then coalesce($11, owner_id) else owner_id end
@@ -280,6 +284,8 @@ export async function updateStation(
       patch.ncarNetwork ?? null,
       patch.gatewayId !== undefined,
       patch.gatewayId ?? null,
+      patch.elevation !== undefined,
+      patch.elevation ?? null,
     ],
   );
   if (!rows[0]) throw new Error("Station not found");

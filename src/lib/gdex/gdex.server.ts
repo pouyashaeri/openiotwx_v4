@@ -93,7 +93,7 @@ export async function eligibleStations(): Promise<(StationInfo & { stationId: st
   const sql = await getSql();
   const rows = await sql.query<EligibleRow>(
     `select id, slug, name, latitude, longitude, elevation_m, gdex_steward, gdex_license from stations
-     where ncar_network and gdex_consent and source = 'device' and status = 'active' and gdex_steward <> ''
+     where ncar_network and gdex_consent and source = 'device' and status = 'active' and gdex_steward <> '' and latitude is not null and longitude is not null
      order by slug`,
   );
   return rows.map((r) => ({
@@ -117,7 +117,7 @@ export type Readiness = {
 };
 
 /** What stands between a station and GDEX, in plain words, for the station page and the deploy step. */
-export async function stationReadiness(stationId: string): Promise<(Readiness & { consent: { granted: boolean; steward: string; license: string; at: string | null } }) | null> {
+export async function stationReadiness(stationId: string): Promise<(Readiness & { consent: { granted: boolean; steward: string; license: string; at: string | null }; place: { latitude: number | null; longitude: number | null; elevation: number | null } }) | null> {
   const sql = await getSql();
   const [s] = await sql.query<{
     source: string;
@@ -148,8 +148,8 @@ export async function stationReadiness(stationId: string): Promise<(Readiness & 
   const checks = [
     { id: "device", ok: s.source === "device", label: "Your own station", hint: "Stations imported from a CHORDS portal belong to that portal's owner and are never packaged." },
     { id: "network", ok: s.ncar_network, label: "In the NCAR research network", hint: "Join the network first. GDEX only takes data that is shared openly." },
-    { id: "location", ok: s.latitude !== null && s.longitude !== null, label: "Has a location", hint: "GDEX needs coordinates on every station." },
-    { id: "elevation", ok: s.elevation_m !== null, label: "Has an elevation", hint: "Optional but helpful: altitude is written as missing without it." },
+    { id: "location", ok: s.latitude !== null && s.longitude !== null, label: "Has a location", hint: "GDEX needs coordinates on every station. Use the form below to search for the place or use this device." },
+    { id: "elevation", ok: s.elevation_m !== null, label: "Has an elevation", hint: "Optional but helpful. Altitude is written as missing without it. You can type it or look it up below." },
     { id: "steward", ok: s.gdex_steward.trim() !== "", label: "A named steward", hint: "Consent needs a person, not a device." },
     { id: "consent", ok: s.gdex_consent, label: "Consent to publish in GDEX", hint: "Turn it on below. You can withdraw any time; releases already made stay." },
     { id: "data", ok: Number(n) > 0, label: "Readings in the last 30 days", hint: "Nothing can be packaged until the station has reported." },
@@ -162,6 +162,7 @@ export async function stationReadiness(stationId: string): Promise<(Readiness & 
     variables,
     readings30d: Number(n),
     consent: { granted: s.gdex_consent, steward: s.gdex_steward, license: s.gdex_license, at: s.gdex_consent_at },
+    place: { latitude: s.latitude, longitude: s.longitude, elevation: s.elevation_m },
   };
 }
 
@@ -173,25 +174,31 @@ export async function setConsent(
 ) {
   const sql = await getSql();
   const admin = actor.role !== "user";
-  const [s] = await sql.query<{ owner_id: string; source: string; ncar_network: boolean; latitude: number | null; gdex_steward: string; gdex_license: string }>(
-    "select owner_id, source, ncar_network, latitude, gdex_steward, gdex_license from stations where id = $1",
+  const [s] = await sql.query<{ owner_id: string; source: string; ncar_network: boolean; latitude: number | null; longitude: number | null; gdex_steward: string; gdex_license: string }>(
+    "select owner_id, source, ncar_network, latitude, longitude, gdex_steward, gdex_license from stations where id = $1",
     [stationId],
   );
   if (!s || (!admin && s.owner_id !== actor.userId)) throw new Error("Station not found");
   if (input.consent) {
     if (s.source !== "device") throw new Error("Imported CHORDS stations stay private. Their data belongs to the portal that publishes it");
     if (!s.ncar_network) throw new Error("Join the NCAR research network first. GDEX only takes data that is shared openly");
-    if (s.latitude === null) throw new Error("Set the station's location first. GDEX needs coordinates");
+    if (s.latitude === null || s.longitude === null) throw new Error("Set the station's location first. GDEX needs coordinates");
     if (!input.steward.trim()) throw new Error("Name the steward. Consent needs a person, not a device");
     if (!LICENSES.includes(input.license as (typeof LICENSES)[number])) throw new Error("Choose one of the offered licenses");
   }
   const steward = input.consent ? input.steward.trim().slice(0, 120) : s.gdex_steward;
   const license = input.consent ? input.license : s.gdex_license;
-  await sql.query(
+  // The checks above read the station a moment ago. Granting is decided again inside this one statement, so a
+  // location (or network membership) removed in between cannot slip a consent through: nothing is updated.
+  const done = await sql.query<{ id: string }>(
     `update stations set gdex_consent = $2, gdex_steward = $3, gdex_license = $4,
-       gdex_consent_at = case when $2::bool then now() else gdex_consent_at end where id = $1`,
+       gdex_consent_at = case when $2::bool then now() else gdex_consent_at end
+     where id = $1
+       and (not $2::bool or (latitude is not null and longitude is not null and ncar_network and source = 'device'))
+     returning id`,
     [stationId, input.consent, steward, license],
   );
+  if (!done[0]) throw new Error("The station changed while you were giving consent. It needs a location and a place in the NCAR network. Check the list above and try again");
   await sql.query("insert into gdex_consent_log (station_id, action, steward, license, actor_id) values ($1, $2, $3, $4, $5)", [
     stationId,
     input.consent ? "grant" : "revoke",
@@ -419,7 +426,7 @@ export async function adminOverview() {
   const [counts] = await sql.query<{ network: string; consented: string; eligible: string }>(
     `select count(*) filter (where ncar_network and source = 'device')::text as network,
             count(*) filter (where gdex_consent and source = 'device')::text as consented,
-            count(*) filter (where ncar_network and gdex_consent and source = 'device' and status = 'active' and gdex_steward <> '')::text as eligible
+            count(*) filter (where ncar_network and gdex_consent and source = 'device' and status = 'active' and gdex_steward <> '' and latitude is not null and longitude is not null)::text as eligible
      from stations`,
   );
   const stations = await sql.query<{ slug: string; name: string; gdex_steward: string; gdex_license: string; gdex_consent_at: string | null; ncar_network: boolean; gdex_consent: boolean; latitude: number | null }>(
@@ -443,7 +450,7 @@ export async function publicSummary(origin: string) {
   const sql = await getSql();
   const [c] = await sql.query<{ network: string; eligible: string }>(
     `select count(*) filter (where ncar_network and source = 'device')::text as network,
-            count(*) filter (where ncar_network and gdex_consent and source = 'device' and status = 'active' and gdex_steward <> '')::text as eligible
+            count(*) filter (where ncar_network and gdex_consent and source = 'device' and status = 'active' and gdex_steward <> '' and latitude is not null and longitude is not null)::text as eligible
      from stations`,
   );
   const releases = (await listReleases()).filter((r) => isPublicStatus(r.status));

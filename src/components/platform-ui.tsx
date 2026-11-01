@@ -3,8 +3,9 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ago, isOnline } from "@/lib/platform/hooks";
+import { ago, isOnline, useIsWindows } from "@/lib/platform/hooks";
 import { metricInfo } from "@/lib/platform/metrics";
+import { ingestCommand, sampleValues, shellName } from "@/lib/platform/sample";
 import type { SeriesPoint, StationRow } from "@/lib/platform/service.server";
 import { cn } from "@/lib/utils";
 
@@ -89,8 +90,9 @@ export function CopyBlock({ label, text }: { label: string; text: string }) {
 /** Everything a person needs to bring one station online. Shown once, right after the key is minted. */
 export function SetupCard({ station, apiKey }: { station: Pick<StationRow, "name" | "expected_metrics">; apiKey: string }) {
   const origin = typeof window === "undefined" ? "" : window.location.origin;
-  const sample = Object.fromEntries((station.expected_metrics.length ? station.expected_metrics : ["temp_c"]).map((m) => [m, 0]));
-  const curl = `curl -X POST ${origin}/api/ingest \\\n  -H "x-api-key: ${apiKey}" \\\n  -H "content-type: application/json" \\\n  -d '${JSON.stringify({ values: sample })}'`;
+  const windows = useIsWindows();
+  const sample = sampleValues(station.expected_metrics.length ? station.expected_metrics : ["temp_c"]);
+  const curl = ingestCommand({ origin, key: apiKey, values: sample, windows });
   const device = JSON.stringify({ server: origin, key: apiKey, interval_s: 60, metrics: Object.keys(sample) }, null, 2);
   return (
     <div className="min-w-0 rounded-2xl border border-copper bg-card p-4">
@@ -98,7 +100,7 @@ export function SetupCard({ station, apiKey }: { station: Pick<StationRow, "name
       <p className="mt-1 text-sm text-copper">This key is shown once. Copy it into the station's settings now.</p>
       <CopyBlock label="API key" text={apiKey} />
       <CopyBlock label="Station settings (config.json)" text={device} />
-      <CopyBlock label="Test it from any computer" text={curl} />
+      <CopyBlock label={`Send one reading (${shellName(windows)}, any computer or board)`} text={curl} />
     </div>
   );
 }

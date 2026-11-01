@@ -66,3 +66,68 @@ export function locate(): Promise<GeoHit | null> {
     );
   });
 }
+
+/**
+ * Metres above sea level at a point, from Open-Meteo's free elevation service (a 90 m terrain model, no key).
+ * One request per lookup, made only when someone asks for it. Null when the service cannot be reached.
+ */
+export async function lookupElevation(lat: number, lon: number): Promise<number | null> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const params = new URLSearchParams({ latitude: lat.toFixed(5), longitude: lon.toFixed(5) });
+    const response = await fetch(`https://api.open-meteo.com/v1/elevation?${params.toString()}`, { signal: controller.signal });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { elevation?: unknown[] };
+    const metres = Number(body.elevation?.[0]);
+    return Number.isFinite(metres) ? Math.round(metres) : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export type LocateResult = { ok: true; lat: number; lon: number; altitude: number | null } | { ok: false; message: string };
+
+/**
+ * The browser's own position, with a reason in plain words when it cannot be had. Browsers share location
+ * only on secure pages (https, or localhost itself), which is the usual reason it "does nothing".
+ */
+export function locateDetailed(): Promise<LocateResult> {
+  return new Promise((resolve) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      resolve({ ok: false, message: "This browser cannot share its location. Search for a place or type the numbers." });
+      return;
+    }
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      resolve({
+        ok: false,
+        message: `Browsers only share location on secure pages. Open this site at http://localhost:${window.location.port || "8080"} instead of the network address, or search for a place.`,
+      });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const altitude = position.coords.altitude;
+        resolve({
+          ok: true,
+          lat: Number(position.coords.latitude.toFixed(5)),
+          lon: Number(position.coords.longitude.toFixed(5)),
+          altitude: altitude !== null && Number.isFinite(altitude) ? Math.round(altitude) : null,
+        });
+      },
+      (error) => {
+        const message =
+          error.code === error.PERMISSION_DENIED
+            ? "Location is blocked for this site. Click the lock icon beside the address, allow Location, and try again. On Windows, also check Settings, Privacy and security, Location."
+            : error.code === error.POSITION_UNAVAILABLE
+              ? "This device could not work out where it is. Turn on location services (on Windows: Settings, Privacy and security, Location), or search for a place."
+              : "Finding the location took too long. Try again, or search for a place.";
+        resolve({ ok: false, message });
+      },
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 },
+    );
+  });
+}

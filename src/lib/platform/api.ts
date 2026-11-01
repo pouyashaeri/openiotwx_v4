@@ -62,6 +62,7 @@ const newStation = z.object({
   expectedMetrics: z.array(z.string().max(40)).max(64).optional(),
   latitude: z.number().min(-90).max(90).nullable().optional(),
   longitude: z.number().min(-180).max(180).nullable().optional(),
+  elevation: z.number().min(-500).max(9000).nullable().optional(),
   ncarNetwork: z.boolean().optional(),
 });
 
@@ -90,6 +91,8 @@ export const editStation = createServerFn({ method: "POST" })
         .optional(),
       latitude: z.number().min(-90).max(90).nullable().optional(),
       longitude: z.number().min(-180).max(180).nullable().optional(),
+      // Metres above sea level. The same range the device position packets are held to.
+      elevation: z.number().min(-500).max(9000).nullable().optional(),
     }),
   )
   .handler(async ({ context, data }) => {

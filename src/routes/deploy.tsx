@@ -4,8 +4,9 @@ import { toast } from "sonner";
 import { CopyBlock, Notice, RequireUser, StatusDot, btnGhost, btnPrimary } from "@/components/platform-ui";
 import { FlowSteps } from "@/components/flow-steps";
 import { editStation, listMyStations, newKey, stationView } from "@/lib/platform/api";
-import { ago, useAsync } from "@/lib/platform/hooks";
+import { ago, useAsync, useIsWindows } from "@/lib/platform/hooks";
 import { metricInfo } from "@/lib/platform/metrics";
+import { ingestCommand, sampleValues, shellName } from "@/lib/platform/sample";
 import { useDraft } from "@/lib/wizard/store";
 import { confirmDialog } from "@/components/confirm-dialog";
 import { GdexPanel } from "@/components/gdex-panel";
@@ -72,11 +73,12 @@ function SetUp({ station, reporting }: { station: St; reporting: boolean }) {
   const [key, setKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const metrics = station.expected_metrics.length ? station.expected_metrics : ["temp_c"];
-  const sample = Object.fromEntries(metrics.map((m) => [m, 0]));
+  const windows = useIsWindows();
+  const sample = sampleValues(metrics);
   const k = key ?? "YOUR_STATION_KEY";
   const settings = JSON.stringify({ server: origin, key: k, interval_s: 60, metrics }, null, 2);
-  const http = `curl -X POST ${origin}/api/ingest \\\n  -H "x-api-key: ${k}" -H "content-type: application/json" \\\n  -d '${JSON.stringify({ values: sample })}'`;
-  const chords = `${origin}/measurements/url_create?instrument_id=${station.chords_id}&${metrics.map((m) => `${m}=0`).join("&")}&api_key=${k}`;
+  const http = ingestCommand({ origin, key: k, values: sample, windows });
+  const chords = `${origin}/measurements/url_create?instrument_id=${station.chords_id}&${Object.entries(sample).map(([m, v]) => `${m}=${v}`).join("&")}&api_key=${k}`;
   const mqtt = `topic:   openiotwx/${station.slug}\npayload: ${JSON.stringify({ key: k, values: sample })}`;
 
   return (
@@ -139,7 +141,7 @@ function SetUp({ station, reporting }: { station: St; reporting: boolean }) {
         ) : null}
         <details className="mt-4">
           <summary className="cursor-pointer text-sm font-medium transition-colors duration-150 hover:text-kelp">Other ways to send data</summary>
-          <CopyBlock label="HTTP (any computer or board)" text={http} />
+          <CopyBlock label={`Send one reading (${shellName(windows)}, any computer or board)`} text={http} />
           <CopyBlock label="CHORDS-style address (devices already set up for CHORDS)" text={chords} />
           <CopyBlock label="MQTT (needs the optional MQTT service)" text={mqtt} />
         </details>

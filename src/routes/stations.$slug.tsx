@@ -9,6 +9,7 @@ import { metricInfo, RANGES, type Range } from "@/lib/platform/metrics";
 import { cn } from "@/lib/utils";
 import { confirmDialog } from "@/components/confirm-dialog";
 import { GdexPanel } from "@/components/gdex-panel";
+import { PlaceForm } from "@/components/location-fields";
 
 export const Route = createFileRoute("/stations/$slug")({
   head: () => ({ meta: [{ title: "Station | OpenIoTwx" }] }),
@@ -322,69 +323,20 @@ function ParamsEditor({ station, onSaved }: { station: StationData; onSaved: () 
 }
 
 function LocationEditor({ station, onSaved }: { station: StationData; onSaved: () => void }) {
-  const [lat, setLat] = useState(station.latitude?.toString() ?? "");
-  const [lon, setLon] = useState(station.longitude?.toString() ?? "");
-  const [busy, setBusy] = useState(false);
-  const la = lat.trim() === "" ? null : Number(lat);
-  const lo = lon.trim() === "" ? null : Number(lon);
-  const valid = (la === null && lo === null) || (la !== null && lo !== null && Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 90 && Math.abs(lo) <= 180);
-  const input = "min-h-10 w-full rounded-lg border border-line bg-paper px-3 text-sm";
   return (
     <details className="mt-5 rounded-xl border border-line bg-paper p-4" open={station.latitude == null}>
       <summary className="cursor-pointer text-sm font-medium transition-colors duration-150 hover:text-kelp">
-        Location {station.latitude != null && station.longitude != null ? `(${station.latitude.toFixed(3)}, ${station.longitude.toFixed(3)})` : "(not set)"}
+        Location {station.latitude != null && station.longitude != null ? `(${station.latitude.toFixed(3)}, ${station.longitude.toFixed(3)}${station.elevation_m != null ? `, ${Math.round(station.elevation_m)} m` : ""})` : "(not set)"}
       </summary>
       <p className="mt-2 text-sm text-muted">
-        Where the station is. A forecast is picked for this spot, and the Stations map and downloads carry it.
+        Where the station is. A forecast is picked for this spot, and the Stations map and downloads carry it. The elevation (metres above sea level) goes into a GDEX release as the station&apos;s altitude, and you can leave it empty.
       </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <label className="grid gap-1 text-sm">
-          Latitude (−90 to 90)
-          <input value={lat} onChange={(e) => setLat(e.target.value)} inputMode="decimal" placeholder="39.9784" className={input} />
-        </label>
-        <label className="grid gap-1 text-sm">
-          Longitude (−180 to 180)
-          <input value={lon} onChange={(e) => setLon(e.target.value)} inputMode="decimal" placeholder="-105.2749" className={input} />
-        </label>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className={btnPrimary}
-          disabled={busy || !valid}
-          onClick={async () => {
-            setBusy(true);
-            try {
-              await editStation({ data: { id: station.id, latitude: la, longitude: lo } });
-              toast.success("Location saved");
-              onSaved();
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : "Could not save the location");
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          Save location
-        </button>
-        <button
-          type="button"
-          className={btnGhost}
-          onClick={() => {
-            if (!navigator.geolocation) return toast.error("This browser can't share its location.");
-            navigator.geolocation.getCurrentPosition(
-              (p) => {
-                setLat(p.coords.latitude.toFixed(5));
-                setLon(p.coords.longitude.toFixed(5));
-              },
-              () => toast.error("The browser did not share its location. Type the coordinates instead."),
-              { timeout: 10000 },
-            );
-          }}
-        >
-          Use this device's location
-        </button>
-        {!valid ? <span className="text-sm text-copper">Both numbers, within range.</span> : null}
+      <div className="mt-3">
+        <PlaceForm
+          stationId={station.id}
+          initial={{ latitude: station.latitude, longitude: station.longitude, elevation: station.elevation_m }}
+          onSaved={onSaved}
+        />
       </div>
     </details>
   );

@@ -198,6 +198,18 @@
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
     .req { color: var(--danger); margin-left: 2px; }
+
+    .loc-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+    .loc-tools .field { flex: 1 1 14rem; }
+    .btn-small {
+      background: transparent; color: var(--accent); border: 1px solid var(--border); border-radius: 6px;
+      font-size: 13px; font-weight: 500; padding: 9px 14px; cursor: pointer; font-family: var(--font-sans);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .btn-small:hover:not(:disabled) { border-color: var(--accent); background: rgba(88,166,255,0.1); }
+    .btn-small:disabled { opacity: 0.45; cursor: not-allowed; }
+    .loc-note { font-size: 12px; color: var(--muted); min-height: 16px; margin: -4px 0 12px; }
+    .loc-note.bad { color: var(--danger); }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -314,6 +326,16 @@
           <span class="section-desc">Where is this station deployed</span>
         </div>
         <div class="section-body">
+          <div class="loc-tools">
+            <div class="field">
+              <label for="rp_search">Search for the place</label>
+              <input type="text" id="rp_search" placeholder="Town, ZIP, or address" maxlength="120" />
+            </div>
+            <button type="button" class="btn-small" id="rp_searchBtn">Search</button>
+            <button type="button" class="btn-small" id="rp_deviceBtn">Use my location</button>
+            <button type="button" class="btn-small" id="rp_lookupBtn" title="Look up the elevation at these coordinates">Look up elevation</button>
+          </div>
+          <div class="loc-note" id="rp_note" role="status" aria-live="polite"></div>
           <div class="field-row-3">
             <div class="field">
               <label>Latitude</label>
@@ -324,8 +346,9 @@
               <input type="number" id="longitude" placeholder="e.g. -105.2749" step="0.0001" min="-180" max="180" />
             </div>
             <div class="field">
-              <label>Altitude (m)</label>
+              <label>Elevation (m), optional</label>
               <input type="number" id="altitude" placeholder="e.g. 1650" step="1" min="-500" max="10000" />
+              <span class="field-hint">Leave blank if unknown (the board then stores 0). Use "Look up elevation" to fill it from the coordinates.</span>
             </div>
           </div>
           <div class="field">
@@ -404,6 +427,40 @@
             <label>MQTT Topic <span class="req">*</span></label>
             <input type="text" id="esp_topic" placeholder="e.g. ncar/iotwx/co/boulder/station000" maxlength="95" />
             <span class="field-hint">Full topic path this station publishes measurements to</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">📍</span>
+          <span class="section-title">Station Location</span>
+          <span class="section-desc">Optional. Not part of the firmware, it pre-fills the next step</span>
+        </div>
+        <div class="section-body">
+          <div class="loc-tools">
+            <div class="field">
+              <label for="esp_search">Search for the place</label>
+              <input type="text" id="esp_search" placeholder="Town, ZIP, or address" maxlength="120" />
+            </div>
+            <button type="button" class="btn-small" id="esp_searchBtn">Search</button>
+            <button type="button" class="btn-small" id="esp_deviceBtn">Use my location</button>
+            <button type="button" class="btn-small" id="esp_lookupBtn" title="Look up the elevation at these coordinates">Look up elevation</button>
+          </div>
+          <div class="loc-note" id="esp_note" role="status" aria-live="polite"></div>
+          <div class="field-row-3">
+            <div class="field">
+              <label>Latitude</label>
+              <input type="number" id="esp_latitude" placeholder="e.g. 39.9784" step="0.0001" min="-90" max="90" />
+            </div>
+            <div class="field">
+              <label>Longitude</label>
+              <input type="number" id="esp_longitude" placeholder="e.g. -105.2749" step="0.0001" min="-180" max="180" />
+            </div>
+            <div class="field">
+              <label>Elevation (m), optional</label>
+              <input type="number" id="esp_altitude" placeholder="e.g. 1650" step="1" min="-500" max="9000" />
+            </div>
           </div>
         </div>
       </div>
@@ -566,6 +623,81 @@
     espPwdToggle.textContent = show ? 'hide' : 'show';
   });
 
+  // ── Place tools: search, this device's position, and an elevation lookup (both boards) ──
+  function wireLocationTools(p) {
+    const el = (id) => document.getElementById(id);
+    const note = el(p.note);
+    const say = (text, bad) => { note.textContent = text; note.classList.toggle('bad', Boolean(bad)); };
+    const busy = (on) => [p.search, p.device, p.lookup].forEach((id) => { el(id).disabled = on; });
+
+    async function elevationFor(lat, lon) {
+      try {
+        const r = await fetch('https://api.open-meteo.com/v1/elevation?latitude=' + lat.toFixed(5) + '&longitude=' + lon.toFixed(5));
+        const metres = Math.round(Number((await r.json()).elevation[0]));
+        if (!Number.isFinite(metres)) throw new Error('no value');
+        el(p.alt).value = metres;
+        return 'Elevation ' + metres + ' m.';
+      } catch (e) {
+        return 'The elevation service did not answer. Type the elevation, or try again.';
+      }
+    }
+
+    el(p.search).addEventListener('click', async () => {
+      const q = el(p.query).value.trim();
+      if (q.length < 2) return say('Type a town, ZIP, or address first.', true);
+      busy(true); say('Searching…');
+      try {
+        const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(q), { headers: { Accept: 'application/json' } });
+        const hit = (await r.json())[0];
+        if (!hit) { say('No place found. Try a town, a ZIP, or an address, or type the numbers.', true); return; }
+        const lat = Number(hit.lat), lon = Number(hit.lon);
+        el(p.lat).value = lat.toFixed(5);
+        el(p.lon).value = lon.toFixed(5);
+        say('Found ' + hit.display_name.split(',').slice(0, 3).join(',').trim() + '. ' + await elevationFor(lat, lon));
+      } catch (e) {
+        say('The place search did not answer. Type the numbers instead.', true);
+      } finally { busy(false); }
+    });
+    el(p.query).addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); el(p.search).click(); }
+    });
+
+    el(p.device).addEventListener('click', () => {
+      if (!navigator.geolocation) return say('This browser cannot share its location. Search for a place or type the numbers.', true);
+      if (!window.isSecureContext) return say('Browsers only share location on secure pages. Open this site at http://localhost:' + (location.port || '8080') + ' instead of the network address, or search for a place.', true);
+      busy(true); say('Asking the browser…');
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(5)), lon = Number(pos.coords.longitude.toFixed(5));
+        el(p.lat).value = lat;
+        el(p.lon).value = lon;
+        const alt = pos.coords.altitude;
+        if (alt !== null && Number.isFinite(alt)) { el(p.alt).value = Math.round(alt); say("Got this device's position and altitude (" + Math.round(alt) + ' m).'); }
+        else say("Got this device's position. " + await elevationFor(lat, lon));
+        busy(false);
+      }, (err) => {
+        busy(false);
+        say(err.code === 1
+          ? 'Location is blocked for this site. Click the lock icon beside the address, allow Location, and try again. On Windows, also check Settings, Privacy and security, Location.'
+          : err.code === 2
+            ? 'This device could not work out where it is. Turn on location services, or search for a place.'
+            : 'Finding the location took too long. Try again, or search for a place.', true);
+      }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 });
+    });
+
+    el(p.lookup).addEventListener('click', async () => {
+      const lat = Number(el(p.lat).value), lon = Number(el(p.lon).value);
+      if (el(p.lat).value === '' || el(p.lon).value === '' || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+        return say('Fill in the latitude and longitude first (or search for the place).', true);
+      }
+      busy(true); say('Looking up…');
+      const text = await elevationFor(lat, lon);
+      say(text, text.indexOf('did not answer') !== -1);
+      busy(false);
+    });
+  }
+  wireLocationTools({ query: 'rp_search', search: 'rp_searchBtn', device: 'rp_deviceBtn', lookup: 'rp_lookupBtn', note: 'rp_note', lat: 'latitude', lon: 'longitude', alt: 'altitude' });
+  wireLocationTools({ query: 'esp_search', search: 'esp_searchBtn', device: 'esp_deviceBtn', lookup: 'esp_lookupBtn', note: 'esp_note', lat: 'esp_latitude', lon: 'esp_longitude', alt: 'esp_altitude' });
+
   // ── Pre-fill from sessionStorage if returning ──
   const saved = JSON.parse(sessionStorage.getItem('iotwx_setup') || '{}');
   if (saved.device) selectDevice(saved.device);
@@ -584,6 +716,12 @@
     if (si.station_info_interval) document.getElementById('station_info_interval').value = si.station_info_interval;
     if (ra.pong_timeout)    document.getElementById('pong_timeout').value    = ra.pong_timeout;
     if (ra.connect_timeout) document.getElementById('connect_timeout').value = ra.connect_timeout;
+  }
+  if (saved.device === 'esp32' && saved.location) {
+    const loc = saved.location;
+    if (loc.latitude !== undefined && loc.latitude !== null) document.getElementById('esp_latitude').value = loc.latitude;
+    if (loc.longitude !== undefined && loc.longitude !== null) document.getElementById('esp_longitude').value = loc.longitude;
+    if (loc.elevation !== undefined && loc.elevation !== null) document.getElementById('esp_altitude').value = loc.elevation;
   }
   if (saved.device === 'esp32' && saved.config) {
     const c = saved.config;
@@ -817,9 +955,25 @@
           throw new Error('The complete ESP32 configuration exceeds 2048 bytes.');
         }
 
+        const optionalNumber = (id, label, minimum, maximum) => {
+          const raw = document.getElementById(id).value.trim();
+          if (raw === '') return null;
+          const value = Number(raw);
+          if (!Number.isFinite(value) || value < minimum || value > maximum) {
+            throw new Error(label + ' must be between ' + minimum + ' and ' + maximum + ', or left empty.');
+          }
+          return value;
+        };
+        const latitude = optionalNumber('esp_latitude', 'Latitude', -90, 90);
+        const longitude = optionalNumber('esp_longitude', 'Longitude', -180, 180);
+        if ((latitude === null) !== (longitude === null)) {
+          throw new Error('Give both latitude and longitude, or leave both empty.');
+        }
+        const elevation = optionalNumber('esp_altitude', 'Elevation', -500, 9000);
+
         sessionStorage.setItem(
           'iotwx_setup',
-          JSON.stringify({ device: 'esp32', config })
+          JSON.stringify({ device: 'esp32', config, location: { latitude, longitude, elevation } })
         );
       } catch (error) {
         themedAlert(error.message);

@@ -42,3 +42,10 @@ export function ago(iso: string | null | undefined): string {
 
 export const isOnline = (iso: string | null | undefined) =>
   Boolean(iso) && Date.now() - new Date(iso as string).getTime() < 15 * 60_000;
+
+/** Is this browser on Windows? False on the server and on the first paint, so the page hydrates cleanly. */
+export function useIsWindows(): boolean {
+  const [windows, setWindows] = useState(false);
+  useEffect(() => setWindows(/windows/i.test(navigator.userAgent)), []);
+  return windows;
+}

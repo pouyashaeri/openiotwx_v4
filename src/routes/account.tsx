@@ -58,6 +58,11 @@ function Account() {
       <p className="text-sm text-kelp-deep">My system</p>
       <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
         <h1 className="font-display text-4xl">{me.data?.name || "Your account"}</h1>
+        {me.data && me.data.role !== "user" ? (
+          <Link to="/admin" className={btnPrimary}>
+            Admin panel
+          </Link>
+        ) : null}
       </div>
       {me.error ? <div className="mt-4"><Notice>{me.error}</Notice></div> : null}
 

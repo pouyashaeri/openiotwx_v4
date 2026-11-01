@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { confirmDialog } from "@/components/confirm-dialog";
+import { PlaceForm, STATION_CHANGED } from "@/components/location-fields";
 import { btnGhost, btnPrimary } from "@/components/platform-ui";
 import { gdexSetConsent, gdexStationState } from "@/lib/gdex/api";
 import { useAsync } from "@/lib/platform/hooks";
@@ -14,8 +15,18 @@ const LICENSES = ["CC BY 4.0", "CC0 1.0", "ODbL 1.0"] as const;
  * deploy step both show it, because consent belongs to the person who runs the station.
  */
 export function GdexPanel({ stationId, compact = false }: { stationId: string; compact?: boolean }) {
-  const state = useAsync(() => gdexStationState({ data: { id: stationId } }), [stationId]);
+  // Checked again every few seconds, so a first reading (or a location saved elsewhere) ticks the list by itself.
+  const state = useAsync(() => gdexStationState({ data: { id: stationId } }), [stationId], 5000);
   const s = state.data;
+  const reload = state.reload;
+  useEffect(() => {
+    const onChanged = (e: Event) => {
+      const id = (e as CustomEvent<{ stationId?: string }>).detail?.stationId;
+      if (!id || id === stationId) void reload();
+    };
+    window.addEventListener(STATION_CHANGED, onChanged);
+    return () => window.removeEventListener(STATION_CHANGED, onChanged);
+  }, [stationId, reload]);
   const [steward, setSteward] = useState("");
   const [license, setLicense] = useState<(typeof LICENSES)[number]>("CC BY 4.0");
   const [busy, setBusy] = useState(false);
@@ -24,6 +35,17 @@ export function GdexPanel({ stationId, compact = false }: { stationId: string; c
   async function change(consent: boolean) {
     setBusy(true);
     try {
+      if (consent) {
+        // The list on screen may be a few seconds old. Look again right now: someone may have cleared the
+        // location after it was ticked. The server checks once more when it records the consent.
+        const fresh = await gdexStationState({ data: { id: stationId } });
+        const missing = fresh?.checks.filter((c) => !c.ok && ["device", "network", "location", "steward"].includes(c.id) && c.id !== "steward");
+        if (missing?.length) {
+          toast.error(`Not yet: ${missing.map((m) => m.label.toLowerCase()).join(", ")}.`);
+          await state.reload();
+          return;
+        }
+      }
       await gdexSetConsent({ data: { id: stationId, consent, steward: steward || s?.consent.steward || "", license } });
       toast.success(consent ? "Consent recorded" : "Consent withdrawn");
       await state.reload();
@@ -63,9 +85,20 @@ export function GdexPanel({ stationId, compact = false }: { stationId: string; c
             <span aria-hidden="true" className={cn("mt-0.5 grid size-5 shrink-0 place-items-center rounded-full text-xs", c.ok ? "bg-moss text-kelp-deep" : "border border-line text-muted")}>
               {c.ok ? "✓" : "·"}
             </span>
-            <span>
+            <span className="min-w-0 flex-1">
               {c.label}
+              {c.id === "elevation" && c.ok && s.place.elevation !== null ? <span className="text-muted">{` (${Math.round(s.place.elevation)} m)`}</span> : null}
               {!c.ok ? <span className="block text-xs text-muted">{c.hint}</span> : null}
+              {c.id === "location" || c.id === "elevation" ? (
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-xs text-kelp underline underline-offset-4 transition-colors duration-150 hover:text-kelp-deep">
+                    {c.ok ? "Change" : c.id === "elevation" ? "Add the elevation (optional)" : "Set the location"}
+                  </summary>
+                  <div className="mt-2 rounded-lg border border-line bg-paper p-3">
+                    <PlaceForm stationId={stationId} initial={s.place} onSaved={() => void state.reload()} saveLabel="Save" />
+                  </div>
+                </details>
+              ) : null}
             </span>
           </li>
         ))}
@@ -99,6 +132,13 @@ export function GdexPanel({ stationId, compact = false }: { stationId: string; c
 
       {s.consent.granted ? (
         <div className="mt-4">
+          {!s.ready ? (
+            <p className="mb-2 rounded-lg border border-copper px-3 py-2 text-sm text-copper" role="status">
+              This station is left out of releases for now:{" "}
+              {s.checks.filter((c) => !c.ok && ["device", "network", "location", "data"].includes(c.id)).map((c) => c.label.toLowerCase()).join(", ") || "it is not active"}.
+              It joins the next release as soon as that is fixed. Your consent stays.
+            </p>
+          ) : null}
           <p className="text-sm text-muted">
             Consent given by <strong className="text-ink">{s.consent.steward}</strong> under {s.consent.license}
             {s.consent.at ? ` on ${new Date(s.consent.at).toLocaleDateString()}` : ""}. Releases already made stay in the archive; you can withdraw for future ones at any time.
