@@ -69,7 +69,7 @@ export function PortalSection({ compact = false }: { compact?: boolean }) {
           </p>
         </div>
         {compact ? (
-          <Link to="/analysis" className="no-print inline-flex min-h-10 items-center rounded-md bg-brand px-3 text-sm text-surface">
+          <Link to="/analysis" className="no-print inline-flex min-h-10 items-center rounded-md bg-brand px-3 text-sm text-surface transition-[filter] duration-150 not-disabled:hover:brightness-110">
             Open the portal page
           </Link>
         ) : null}
@@ -90,13 +90,13 @@ export function PortalSection({ compact = false }: { compact?: boolean }) {
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <a
           href={metabase || "#"}
-          className={cn("inline-flex min-h-11 items-center gap-2 rounded-md bg-brand px-4 text-sm text-surface", !metabase && "pointer-events-none opacity-50")}
+          className={cn("inline-flex min-h-11 items-center gap-2 rounded-md bg-brand px-4 text-sm text-surface transition-[filter] duration-150 hover:brightness-110", !metabase && "pointer-events-none opacity-50")}
         >
           Open Metabase
           <ExternalLink className="size-4" aria-hidden="true" />
         </a>
         {metabase ? (
-          <a href={`${metabase}/collection/root`} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-line px-4 text-sm">
+          <a href={`${metabase}/collection/root`} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-line px-4 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep">
             Station collections
           </a>
         ) : null}

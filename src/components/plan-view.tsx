@@ -82,7 +82,7 @@ export function PlanView() {
         </p>
         <Link
           to="/wizard"
-          className="mt-6 inline-flex min-h-12 items-center rounded-full bg-kelp px-5 text-sm font-medium text-paper"
+          className="mt-6 inline-flex min-h-12 items-center rounded-full bg-kelp px-5 text-sm font-medium text-paper transition-[filter] duration-150 not-disabled:hover:brightness-110"
         >
           Start the wizard
         </Link>
@@ -129,7 +129,7 @@ export function PlanView() {
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              className="min-h-11 rounded-full bg-kelp px-4 text-sm text-paper"
+              className="min-h-11 rounded-full bg-kelp px-4 text-sm text-paper transition-[filter] duration-150 not-disabled:hover:brightness-110"
               onClick={() => {
                 loadShared(offer);
                 setOffer(null);
@@ -140,7 +140,7 @@ export function PlanView() {
             </button>
             <button
               type="button"
-              className="min-h-11 rounded-full px-4 text-sm text-muted"
+              className="min-h-11 rounded-full px-4 text-sm text-muted transition-colors duration-150 not-disabled:hover:bg-paper-deep not-disabled:hover:text-ink"
               onClick={() => {
                 setOffer(null);
                 window.history.replaceState(null, "", window.location.pathname);
@@ -406,7 +406,7 @@ export function PlanView() {
           <div className="no-print mt-5 grid gap-2">
             <button
               type="button"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-kelp px-4 text-sm text-paper"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-kelp px-4 text-sm text-paper transition-[filter] duration-150 not-disabled:hover:brightness-110"
               onClick={() =>
                 copyText(planToText(answers, plan, goals, checks, goalLog), "Plan copied")
               }
@@ -416,7 +416,7 @@ export function PlanView() {
             </button>
             <button
               type="button"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line px-4 text-sm"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line px-4 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep"
               onClick={() => {
                 const url = `${window.location.origin}${window.location.pathname}#draft=${encodeURIComponent(encodeDraft(sharedPayload()))}`;
                 void copyText(url, "Link copied. Boxes you ticked stay on this device.");
@@ -426,7 +426,7 @@ export function PlanView() {
             </button>
             <button
               type="button"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line px-4 text-sm"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line px-4 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep"
               onClick={() =>
                 copyText(interimText(plan, goals, checks, goalLog), "Interim note copied")
               }
@@ -435,7 +435,7 @@ export function PlanView() {
             </button>
             <button
               type="button"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line px-4 text-sm"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line px-4 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep"
               onClick={() => window.print()}
             >
               <Printer className="size-4" aria-hidden="true" />
@@ -443,13 +443,13 @@ export function PlanView() {
             </button>
             <Link
               to="/wizard"
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-line px-4 text-sm"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-line px-4 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep"
             >
               Revise answers
             </Link>
             <button
               type="button"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm text-muted"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm text-muted transition-colors duration-150 not-disabled:hover:bg-paper-deep not-disabled:hover:text-ink"
               onClick={() => {
                 reset();
                 toast("Draft cleared on this device");
@@ -463,7 +463,7 @@ export function PlanView() {
           {needsRaspberryPi(plan) ? (
             <Link
               to="/raspberry-pi"
-              className="no-print mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-kelp px-5 text-sm font-medium text-kelp-deep"
+              className="no-print mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-kelp px-5 text-sm font-medium text-kelp-deep transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep"
             >
               Set up the Raspberry Pi gateway
             </Link>
@@ -472,7 +472,7 @@ export function PlanView() {
           {flashHref(plan) ? (
             <a
               href={flashHref(plan)!}
-              className="no-print mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-kelp px-5 text-sm font-medium text-paper"
+              className="no-print mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-kelp px-5 text-sm font-medium text-paper transition-[filter] duration-150 not-disabled:hover:brightness-110"
             >
               Flash this plan's board
             </a>
@@ -536,7 +536,7 @@ function Goals({
         <button
           type="button"
           onClick={onAdopt}
-          className="no-print mt-3 text-sm text-kelp-deep underline underline-offset-4"
+          className="no-print mt-3 text-sm text-kelp-deep underline underline-offset-4 transition-colors duration-150 hover:text-kelp-deep"
         >
           Replace these with the posts suggested by your latest answers
         </button>
@@ -558,7 +558,7 @@ function Goals({
                 <p>{goal.text}</p>
                 <button
                   type="button"
-                  className="no-print shrink-0 text-sm text-kelp-deep underline underline-offset-4"
+                  className="no-print shrink-0 text-sm text-kelp-deep underline underline-offset-4 transition-colors duration-150 hover:text-kelp-deep"
                   onClick={() => setEditing(goal.id)}
                 >
                   This changed
@@ -630,10 +630,10 @@ function GoalEditor({
         rows={2}
       />
       <div className="mt-3 flex gap-2">
-        <button type="submit" className="min-h-11 rounded-full bg-kelp px-4 text-sm text-paper">
+        <button type="submit" className="min-h-11 rounded-full bg-kelp px-4 text-sm text-paper transition-[filter] duration-150 not-disabled:hover:brightness-110">
           Save change
         </button>
-        <button type="button" onClick={onCancel} className="min-h-11 rounded-full px-4 text-sm text-muted">
+        <button type="button" onClick={onCancel} className="min-h-11 rounded-full px-4 text-sm text-muted transition-colors duration-150 not-disabled:hover:bg-paper-deep not-disabled:hover:text-ink">
           Cancel
         </button>
       </div>
@@ -746,7 +746,7 @@ function PlanDecisions() {
           </h2>
           <p className="mt-1 text-sm text-muted">{station.note}</p>
         </div>
-        <Link to="/forecast" className="no-print inline-flex min-h-10 items-center rounded-md border border-line px-3 text-sm">
+        <Link to="/forecast" className="no-print inline-flex min-h-10 items-center rounded-md border border-line px-3 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep">
           Open the forecast
         </Link>
       </div>

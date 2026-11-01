@@ -1,7 +1,7 @@
 # OpenIoTwx
 
 Plan a weather station with the wizard, save the plan to an account, register the stations, and
-collect their data on a server you run. Design notes: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). What replaced the legacy mesonet services: [docs/LEGACY-MAPPING.md](docs/LEGACY-MAPPING.md).
+collect their data on a server you run. Design notes: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). What replaced the legacy mesonet services: [docs/LEGACY-MAPPING.md](docs/LEGACY-MAPPING.md). Getting station data into the NSF NCAR GDEX archive (CF-compliant releases, consent, the pull manifest): [docs/GDEX.md](docs/GDEX.md). Contact and support (the /contact page, the support email, the admin inbox): [docs/SUPPORT.md](docs/SUPPORT.md). The planning chat, its optional language model and how it matches the survey: [docs/CHAT.md](docs/CHAT.md).
 
 ## What is in it
 

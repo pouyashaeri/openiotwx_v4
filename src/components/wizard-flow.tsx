@@ -14,11 +14,11 @@ import {
   RESOURCES,
   SHARING,
   SURPRISES,
-  TOOLS,
   WHO,
   intentLabel,
 } from "@/lib/wizard/catalog";
 import { stepPurpose } from "@/lib/wizard/purpose";
+import { NAME_PLACEHOLDER, STEPS, SURVEY, questionTitle } from "@/lib/wizard/questions";
 import { useDraft } from "@/lib/wizard/store";
 import type { Intent, StepId } from "@/lib/wizard/types";
 import { cn } from "@/lib/utils";
@@ -60,9 +60,9 @@ export function WizardFlow() {
     return (
       <main id="content" className="mx-auto max-w-5xl px-4 py-8">
         <p className="text-sm text-kelp-deep">Start</p>
-        <h1 className="mt-2 font-display text-4xl">What brings you here?</h1>
+        <h1 className="mt-2 font-display text-4xl">{questionTitle("intent")}</h1>
         <p className="mt-3 max-w-xl text-muted">
-          Pick the path that matches the work. A bench build skips the community checklist.
+          {SURVEY.intent.body}
         </p>
         <div className="mt-6 grid gap-3">
           {INTENTS.map((item) => (
@@ -154,16 +154,18 @@ function WizardNav({
   onNext: () => void;
 }) {
   return (
-    <div className="no-print sticky bottom-0 z-10 -mx-4 mt-8 border-t border-line bg-paper px-4 py-3">
+    // Part of the page, under the last question. It used to be pinned to the bottom of the screen, where it
+    // floated over the content whenever the page was scrolled to the top.
+    <div className="no-print mt-10 border-t border-line pt-5">
       <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={onBack} className="min-h-11 rounded-md px-4 text-sm text-muted">
+        <button type="button" onClick={onBack} className="min-h-11 rounded-md px-4 text-sm text-muted transition-colors hover:bg-paper-deep hover:text-ink">
           Back
         </button>
         <button
           type="button"
           disabled={!canContinue}
           onClick={onNext}
-          className="min-h-11 rounded-md bg-brand px-5 text-sm font-medium text-white disabled:opacity-40"
+          className="min-h-11 rounded-md bg-brand px-5 text-sm font-medium text-white transition hover:brightness-110 disabled:opacity-40 disabled:hover:brightness-100"
         >
           {isLast ? "Write the draft" : "Continue"}
         </button>
@@ -193,8 +195,8 @@ function StepBody({
       <StepFrame
         step="place"
         kicker="The place"
-        title="Where will your station be placed?"
-        body="A station is a small sensor box you build and install, indoors or out. Pick the setting closest to yours."
+        title={questionTitle("place")}
+        body={SURVEY.place.body}
       >
         <div className="grid gap-3">
           {PLACES.map((item) => (
@@ -216,8 +218,8 @@ function StepBody({
       <StepFrame
         step="link"
         kicker="Power and connection"
-        title="How will your station be powered?"
-        body="Pick what is really available at the spot, not what you hope to add later."
+        title={questionTitle("power")}
+        body={SURVEY.power.body}
       >
         <div className="grid gap-3">
           {POWERS.map((item) => (
@@ -234,11 +236,10 @@ function StepBody({
         <section className="mt-8" aria-labelledby="comms-title">
           <p className="eyebrow">Step 2a</p>
           <h2 id="comms-title" className="mt-2 text-2xl">
-            What communication technology is available?
+            {questionTitle("link")}
           </h2>
           <p className="mt-2 max-w-xl text-sm text-muted">
-            This is how your station will send its readings. Choose the one that works where you
-            want to place it.
+            {SURVEY.link.body}
           </p>
           <div className="mt-4 grid gap-3">
             {LINKS.map((item) => (
@@ -261,8 +262,8 @@ function StepBody({
       <StepFrame
         step="measures"
         kicker="What to notice"
-        title="What data should your station collect?"
-        body="Choose every community measurement that matters to you. You can drop one later."
+        title={questionTitle("measures")}
+        body={SURVEY.measures.body}
       >
         <div className="grid gap-3">
           {MEASURES.map((item) => (
@@ -281,16 +282,12 @@ function StepBody({
           aria-pressed={answers.sharp}
           onClick={() => onPatch({ sharp: !answers.sharp })}
           className={cn(
-            "mt-3 w-full rounded-lg border px-4 py-4 text-left",
+            "mt-3 w-full rounded-lg border px-4 py-4 text-left transition-colors hover:border-brand hover:bg-brand-soft",
             answers.sharp ? "border-brand bg-brand-soft" : "border-line bg-white",
           )}
         >
-          <span className="font-display text-lg">Temperatures here swing hard</span>
-          <span className="mt-1 block text-sm text-muted">
-            Prefer a sensor that stays accurate in extreme heat or cold. Everyday sensors are
-            simpler and also report volatile organic compounds (VOCs) in the air, which the
-            extreme-weather sensors do not.
-          </span>
+          <span className="font-display text-lg">{questionTitle("sharp")}</span>
+          <span className="mt-1 block text-sm text-muted">{SURVEY.sharp.body}</span>
         </button>
       </StepFrame>
     );
@@ -300,8 +297,8 @@ function StepBody({
       <StepFrame
         step="count"
         kicker="How many"
-        title="How many stations do you want?"
-        body="Print time and the parts list scale with this number."
+        title={questionTitle("count")}
+        body={SURVEY.count.body}
       >
         <div className="grid gap-3">
           {COUNTS.map((item) => (
@@ -323,12 +320,8 @@ function StepBody({
       <StepFrame
         step="surprises"
         kicker="The place, again"
-        title={
-          answers.intent === "teach"
-            ? "What should people be able to notice at your site?"
-            : "What has caught people off guard at your site?"
-        }
-        body="Pick every pattern that is actually true. This is not a score."
+        title={questionTitle("surprises", answers.intent)}
+        body={SURVEY.surprises.body}
       >
         <div className="grid gap-3">
           {SURPRISES.map((item) => (
@@ -350,12 +343,12 @@ function StepBody({
       <StepFrame
         step="people"
         kicker="The people"
-        title="Who is your station for, and what would better look like?"
-        body="Three short groups. Choose at least one in each."
+        title={STEPS.people.title}
+        body={STEPS.people.body}
       >
         <Group
-          label="Who needs to be able to use it?"
-          hint="Response starts with a person who can open this plan."
+          label={questionTitle("who")}
+          hint={SURVEY.who.body}
         >
           {WHO.map((item) => (
             <ChoiceCard
@@ -369,8 +362,8 @@ function StepBody({
           ))}
         </Group>
         <Group
-          label="Six months from now, which of these would matter?"
-          hint="How you would recover: a backup, a practice run, readings you still control."
+          label={questionTitle("progress")}
+          hint={SURVEY.progress.body}
         >
           {PROGRESS.map((item) => (
             <ChoiceCard
@@ -384,8 +377,8 @@ function StepBody({
           ))}
         </Group>
         <Group
-          label="What is in the way right now?"
-          hint="How ready you are today. Naming the gap is the point, not a score."
+          label={questionTitle("gaps")}
+          hint={SURVEY.gaps.body}
         >
           {GAPS.map((item) => (
             <ChoiceCard
@@ -406,8 +399,8 @@ function StepBody({
       <StepFrame
         step="resources"
         kicker="Resources"
-        title="What can the people around this station bring?"
-        body="Pick what is really on hand. Each answer unlocks something on the Community page: a printer joins the build collective, a spare computer joins the forecast pool, a host runs the server. Nothing here is required."
+        title={questionTitle("resources")}
+        body={SURVEY.resources.body}
       >
         <div className="grid gap-3">
           {RESOURCES.map((item) => (
@@ -429,8 +422,8 @@ function StepBody({
       <StepFrame
         step="data"
         kicker="The data"
-        title="Where should the readings live?"
-        body="Each option is more open than the one before it. You can move up or down the list later; the plan records the decision and the date."
+        title={questionTitle("sharing")}
+        body={SURVEY.sharing.body}
       >
         <div className="grid gap-3">
           {SHARING.map((item) => (
@@ -449,16 +442,12 @@ function StepBody({
           aria-pressed={answers.gdex}
           onClick={() => onPatch({ gdex: !answers.gdex })}
           className={cn(
-            "mt-3 w-full rounded-lg border px-4 py-4 text-left",
+            "mt-3 w-full rounded-lg border px-4 py-4 text-left transition-colors hover:border-brand hover:bg-brand-soft",
             answers.gdex ? "border-brand bg-brand-soft" : "border-line bg-panel",
           )}
         >
-          <span className="text-lg">Also archive and publish in GDEX</span>
-          <span className="mt-1 block text-sm text-muted">
-            {TOOLS.gdex.what} This is an opt-in: off until you turn it on, and reversible. The plan's
-            data section shows exactly what would be published and under which license before anything
-            leaves your server.
-          </span>
+          <span className="text-lg">{questionTitle("gdex")}</span>
+          <span className="mt-1 block text-sm text-muted">{SURVEY.gdex.body}</span>
         </button>
       </StepFrame>
     );
@@ -527,11 +516,11 @@ function ReviewStep({
     <StepFrame
       step="review"
       kicker="Draft"
-      title="Name the place, then write the plan."
-      body="You can revise any answer after. Goal posts stay put until you edit them."
+      title={STEPS.review.title}
+      body={STEPS.review.body}
     >
       <label className="block text-sm text-muted" htmlFor="site-name">
-        What should we call this place?
+        {questionTitle("siteName")}
       </label>
       <input
         id="site-name"
@@ -540,7 +529,7 @@ function ReviewStep({
           setLocalName(event.target.value);
           onSiteName(event.target.value);
         }}
-        placeholder="North lot, harbor road"
+        placeholder={NAME_PLACEHOLDER}
         className="mt-2 w-full rounded-2xl border border-line bg-card px-4 py-3 text-ink"
       />
       <div className="mt-6">

@@ -8,9 +8,11 @@ import { metricInfo } from "@/lib/platform/metrics";
 import type { SeriesPoint, StationRow } from "@/lib/platform/service.server";
 import { cn } from "@/lib/utils";
 
-export const btn = "inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-medium disabled:opacity-60";
-export const btnPrimary = `${btn} bg-kelp text-paper`;
-export const btnGhost = `${btn} border border-line bg-card text-ink`;
+// One simple hover family for every button: filled ones brighten, outlined ones take the brand border and a faint tint.
+// `not-disabled:` keeps a disabled button still, and also works on links. (.btn-glow, where it is added, overrides this on purpose.)
+export const btn = "inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-medium transition-[filter,background-color,border-color] duration-150 disabled:opacity-60";
+export const btnPrimary = `${btn} bg-kelp text-paper not-disabled:hover:brightness-110`;
+export const btnGhost = `${btn} border border-line bg-card text-ink not-disabled:hover:border-kelp not-disabled:hover:bg-paper-deep`;
 
 export function StatusDot({ station }: { station: Pick<StationRow, "status" | "last_seen_at"> }) {
   const state = station.status === "disabled" ? "disabled" : isOnline(station.last_seen_at) ? "online" : "quiet";
@@ -59,12 +61,12 @@ export function StationCard({ station }: { station: StationRow }) {
 export function CopyBlock({ label, text }: { label: string; text: string }) {
   const [done, setDone] = useState(false);
   return (
-    <div className="mt-3">
+    <div className="mt-3 min-w-0 max-w-full">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted">{label}</p>
         <button
           type="button"
-          className="inline-flex items-center gap-1 text-xs text-kelp"
+          className="inline-flex items-center gap-1 text-xs text-kelp transition-colors duration-150 hover:text-kelp-deep"
           onClick={async () => {
             try {
               await navigator.clipboard.writeText(text);
@@ -79,7 +81,7 @@ export function CopyBlock({ label, text }: { label: string; text: string }) {
           {done ? "Copied" : "Copy"}
         </button>
       </div>
-      <pre className="mt-1 overflow-x-auto rounded-xl bg-navy p-3 font-mono text-xs leading-relaxed text-blue-100">{text}</pre>
+      <pre className="mt-1 max-w-full whitespace-pre-wrap rounded-xl bg-navy [overflow-wrap:anywhere] p-3 font-mono text-xs leading-relaxed text-blue-100">{text}</pre>
     </div>
   );
 }
@@ -91,7 +93,7 @@ export function SetupCard({ station, apiKey }: { station: Pick<StationRow, "name
   const curl = `curl -X POST ${origin}/api/ingest \\\n  -H "x-api-key: ${apiKey}" \\\n  -H "content-type: application/json" \\\n  -d '${JSON.stringify({ values: sample })}'`;
   const device = JSON.stringify({ server: origin, key: apiKey, interval_s: 60, metrics: Object.keys(sample) }, null, 2);
   return (
-    <div className="rounded-2xl border border-copper bg-card p-4">
+    <div className="min-w-0 rounded-2xl border border-copper bg-card p-4">
       <p className="font-medium">{station.name}</p>
       <p className="mt-1 text-sm text-copper">This key is shown once. Copy it into the station's settings now.</p>
       <CopyBlock label="API key" text={apiKey} />
@@ -263,7 +265,7 @@ export function ParamPicker({
           }}
         />
       ) : (
-        <button type="button" className="justify-self-start text-sm text-kelp underline underline-offset-4" onClick={() => setAdding(true)}>
+        <button type="button" className="justify-self-start text-sm text-kelp underline underline-offset-4 transition-colors duration-150 hover:text-kelp-deep" onClick={() => setAdding(true)}>
           A variable that isn't listed? Add it
         </button>
       )}

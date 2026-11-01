@@ -5,7 +5,7 @@ import { PURPOSES } from "@/lib/wizard/purpose";
 import type { ConfigId } from "@/lib/wizard/types";
 
 export const Route = createFileRoute("/library")({
-  head: () => ({ meta: [{ title: "Field library — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Field library | OpenIoTwx" }] }),
   component: LibraryPage,
 });
 
@@ -24,7 +24,7 @@ function LibraryPage() {
       <p className="no-print mt-6">
         <Link
           to="/"
-          className="inline-flex min-h-11 items-center rounded-full bg-kelp px-5 text-sm text-paper"
+          className="inline-flex min-h-11 items-center rounded-full bg-kelp px-5 text-sm text-paper transition-[filter] duration-150 not-disabled:hover:brightness-110"
         >
           Start from a place
         </Link>

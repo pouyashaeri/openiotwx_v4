@@ -189,8 +189,11 @@ export function SiteHeader() {
           }}
           onBlur={() => setLogoHover(false)}
         >
-          <span className="logo-mark grid size-8 shrink-0 place-items-center rounded-md bg-brand">
-            <span className="size-2.5 rounded-full border-2 border-white" />
+          <span className="logo-mark grid size-8 shrink-0 place-items-center rounded-md bg-brand" data-morph={logoHover ? "true" : "false"}>
+            <svg className="logo-glyph" viewBox="0 0 64 64" width="32" height="32" aria-hidden="true" focusable="false">
+              <circle cx="32" cy="32" r="8" fill="none" stroke="#fff" strokeWidth="4" />
+              <path d="M40 50 L51.5 16" fill="none" stroke="#93c5fd" strokeWidth="6" strokeLinecap="round" />
+            </svg>
           </span>
           <Wordmark phrase={logoHover ? PHRASES[phraseNo % PHRASES.length] : null} />
         </Link>
@@ -264,7 +267,13 @@ export function SiteFooter() {
     <footer className="mt-16 bg-navy text-blue-100/80">
       <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-8 text-sm sm:flex-row sm:items-center sm:justify-between">
         <p>An open source NSF NCAR community project. Data sharing stays a choice, and the infrastructure is yours to run.</p>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <Link to="/gdex" className="font-mono text-xs text-white underline decoration-white/30 underline-offset-4 hover:decoration-white">
+            data-and-gdex
+          </Link>
+          <Link to="/contact" className="font-mono text-xs text-white underline decoration-white/30 underline-offset-4 hover:decoration-white">
+            contact
+          </Link>
           <a
             className="font-mono text-xs text-white underline decoration-white/30 underline-offset-4 hover:decoration-white"
             href="https://ncar.github.io/openiotwx/"

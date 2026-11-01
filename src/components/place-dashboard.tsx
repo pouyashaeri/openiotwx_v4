@@ -52,14 +52,14 @@ export function PlaceDashboard({ compact = false }: { compact?: boolean }) {
             <button
               type="button"
               onClick={data.reload}
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line px-3 text-sm"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line px-3 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep"
             >
               <RefreshCw className={cn("size-4", data.status === "loading" && "animate-spin")} aria-hidden="true" />
               Refresh
             </button>
           ) : null}
           {compact ? (
-            <Link to="/analysis" className="inline-flex min-h-10 items-center rounded-md bg-brand px-3 text-sm text-surface">
+            <Link to="/analysis" className="inline-flex min-h-10 items-center rounded-md bg-brand px-3 text-sm text-surface transition-[filter] duration-150 not-disabled:hover:brightness-110">
               Open the full analysis
             </Link>
           ) : null}

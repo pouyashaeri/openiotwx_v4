@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CopyBlock, Notice, RequireUser, StatusDot, TimeChart, btnGhost, btnPrimary } from "@/components/platform-ui";
 import { FlowSteps } from "@/components/flow-steps";
+import { NoStations, StationPicker } from "@/components/station-picker";
 import { listMyStations, stationView } from "@/lib/platform/api";
 import { parseChordsData } from "@/lib/platform/chords-format.ts";
 import { CREDIT_ALIASES, forecastFromObservations, standInForecast, type Pt } from "@/lib/platform/forecast.ts";
@@ -13,7 +14,7 @@ import { useWorkspace } from "@/lib/place/workspace";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/track")({
-  head: () => ({ meta: [{ title: "Step 4: Track and Forecast — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Step 4: Track and Forecast | OpenIoTwx" }] }),
   validateSearch: (q: Record<string, unknown>) => ({ station: typeof q.station === "string" ? q.station : undefined }),
   component: () => (
     <RequireUser>
@@ -24,8 +25,10 @@ export const Route = createFileRoute("/track")({
 
 function Track() {
   const { station: wanted } = Route.useSearch();
+  const navigate = useNavigate();
   const mine = useAsync(() => listMyStations(), []);
   const slug = wanted ?? mine.data?.[0]?.slug;
+  const pick = (s: string) => void navigate({ to: "/track", search: { station: s } });
   return (
     <main id="content" className="mx-auto max-w-5xl px-4 py-8">
       <FlowSteps current={4} station={slug} />
@@ -35,31 +38,10 @@ function Track() {
         stand-in, or with a CREDIT run on your own computer or NCAR CIRRUS.
       </p>
       {mine.error ? <div className="mt-4"><Notice>{mine.error}</Notice></div> : null}
-      {mine.data && !mine.data.length ? (
-        <p className="mt-6 rounded-2xl border border-line bg-card p-5 text-sm">
-          No stations yet. Register one in{" "}
-          <Link to="/deploy" search={{ station: undefined }} className="text-kelp underline underline-offset-4">
-            step 3
-          </Link>{" "}
-          first.
-        </p>
-      ) : null}
+      {mine.data && !mine.data.length ? <NoStations onChanged={mine.reload} onPick={pick} /> : null}
       {mine.data?.length ? (
         <>
-          <label className="mt-6 block text-sm text-muted">
-            Station
-            <select
-              value={slug}
-              onChange={(e) => (window.location.href = `/track?station=${encodeURIComponent(e.target.value)}`)}
-              className="mt-1 block min-h-11 w-full max-w-sm rounded-xl border border-line bg-card px-3 text-ink"
-            >
-              {mine.data.map((s) => (
-                <option key={s.slug} value={s.slug}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <StationPicker stations={mine.data} current={slug} onPick={pick} onChanged={mine.reload} />
           {slug ? <Station slug={slug} /> : null}
         </>
       ) : null}

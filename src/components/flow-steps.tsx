@@ -33,7 +33,7 @@ export function FlowSteps({ current, station }: { current: FlowStep; station?: s
       <ol className="flex flex-wrap items-center gap-x-2 gap-y-2">
         {items.map((it, i) => {
           const active = it.n === current;
-          const cls = cn("inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm", active ? "bg-kelp text-paper" : "border border-line bg-card text-ink hover:border-kelp");
+          const cls = cn("inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm", active ? "bg-kelp text-paper transition-[filter] duration-150 hover:brightness-110" : "border border-line bg-card text-ink hover:border-kelp");
           return (
             <li key={it.n} className="flex items-center gap-2" aria-current={active ? "step" : undefined}>
               {it.render(

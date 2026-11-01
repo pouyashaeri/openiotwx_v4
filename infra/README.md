@@ -109,6 +109,16 @@ chart deploys to an OpenStack-hosted Kubernetes or any other cluster.
 
 ### Archive and publish (IPFS + GDEX)
 
+> **The site itself now builds GDEX releases** from its own database: per-station consent, monthly or
+> quarterly CF-compliant NetCDF, a quality report and a public manifest GDEX can pull. See
+> [docs/GDEX.md](../docs/GDEX.md). What follows is the standalone stack's own publisher. Its upload step
+> (`GDEX_ENDPOINT`) assumes an upload API that GDEX has not confirmed: GDEX described a pull model
+> (you give them the location of the data after creating a submission), so treat that step as
+> unverified and leave `GDEX_DRY_RUN=1` until they say otherwise.
+>
+> To turn a release's NetCDF-3 file into NetCDF-4 with compression and chunking:
+> `python services/gdex_publisher/netcdf4_convert.py <file>.nc`.
+
 Nothing is published unless two things are true: the plan's GDEX switch is on **and** a consent
 row exists for the station (the "Record this decision" button on the plan, `POST /api/consent/`).
 Then, once a day, `gdex_publisher` packages the previous month per station:

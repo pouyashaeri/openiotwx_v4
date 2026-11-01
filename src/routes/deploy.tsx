@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CopyBlock, Notice, RequireUser, StatusDot, btnGhost, btnPrimary } from "@/components/platform-ui";
@@ -8,9 +8,11 @@ import { ago, useAsync } from "@/lib/platform/hooks";
 import { metricInfo } from "@/lib/platform/metrics";
 import { useDraft } from "@/lib/wizard/store";
 import { confirmDialog } from "@/components/confirm-dialog";
+import { GdexPanel } from "@/components/gdex-panel";
+import { NoStations, StationPicker } from "@/components/station-picker";
 
 export const Route = createFileRoute("/deploy")({
-  head: () => ({ meta: [{ title: "Step 3: Deploy and Publish — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Step 3: Deploy and Publish | OpenIoTwx" }] }),
   validateSearch: (q: Record<string, unknown>) => ({ station: typeof q.station === "string" ? q.station : undefined }),
   component: () => (
     <RequireUser>
@@ -21,8 +23,10 @@ export const Route = createFileRoute("/deploy")({
 
 function Deploy() {
   const { station: wanted } = Route.useSearch();
+  const navigate = useNavigate();
   const mine = useAsync(() => listMyStations(), []);
   const slug = wanted ?? mine.data?.[0]?.slug;
+  const pick = (s: string) => void navigate({ to: "/deploy", search: { station: s } });
   return (
     <main id="content" className="mx-auto max-w-5xl px-4 py-8">
       <FlowSteps current={3} station={slug} />
@@ -31,31 +35,10 @@ function Deploy() {
         Put the flashed station to work, check it is reporting, then choose who can see it.
       </p>
       {mine.error ? <div className="mt-4"><Notice>{mine.error}</Notice></div> : null}
-      {mine.data && !mine.data.length ? (
-        <p className="mt-6 rounded-2xl border border-line bg-card p-5 text-sm">
-          You have no stations yet. Finish a plan and register its stations, or{" "}
-          <Link to="/account" className="text-kelp underline underline-offset-4">
-            add one by hand
-          </Link>
-          .
-        </p>
-      ) : null}
+      {mine.data && !mine.data.length ? <NoStations onChanged={mine.reload} onPick={pick} /> : null}
       {mine.data?.length ? (
         <>
-          <label className="mt-6 block text-sm text-muted">
-            Station
-            <select
-              value={slug}
-              onChange={(e) => (window.location.href = `/deploy?station=${encodeURIComponent(e.target.value)}`)}
-              className="mt-1 block min-h-11 w-full max-w-sm rounded-xl border border-line bg-card px-3 text-ink"
-            >
-              {mine.data.map((s) => (
-                <option key={s.slug} value={s.slug}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <StationPicker stations={mine.data} current={slug} onPick={pick} onChanged={mine.reload} />
           {slug ? <Panels slug={slug} /> : null}
         </>
       ) : null}
@@ -72,6 +55,7 @@ function Panels({ slug }: { slug: string }) {
     <div className="mt-6 grid gap-8">
       <SetUp station={st} reporting={reporting} />
       <Publish station={st} onChanged={() => void view.reload()} />
+      {st.source === "device" ? <GdexPanel stationId={st.id} compact /> : null}
       <div className="flex justify-end">
         <Link to="/track" search={{ station: st.slug }} className={btnPrimary}>
           Next: Track and Forecast
@@ -141,7 +125,7 @@ function SetUp({ station, reporting }: { station: St; reporting: boolean }) {
         {key ? (
           <button
             type="button"
-            className="mt-2 text-sm text-kelp underline underline-offset-4"
+            className="mt-2 text-sm text-kelp underline underline-offset-4 transition-colors duration-150 hover:text-kelp-deep"
             onClick={() => {
               const a = document.createElement("a");
               a.href = URL.createObjectURL(new Blob([settings], { type: "application/json" }));
@@ -154,7 +138,7 @@ function SetUp({ station, reporting }: { station: St; reporting: boolean }) {
           </button>
         ) : null}
         <details className="mt-4">
-          <summary className="cursor-pointer text-sm font-medium">Other ways to send data</summary>
+          <summary className="cursor-pointer text-sm font-medium transition-colors duration-150 hover:text-kelp">Other ways to send data</summary>
           <CopyBlock label="HTTP (any computer or board)" text={http} />
           <CopyBlock label="CHORDS-style address (devices already set up for CHORDS)" text={chords} />
           <CopyBlock label="MQTT (needs the optional MQTT service)" text={mqtt} />

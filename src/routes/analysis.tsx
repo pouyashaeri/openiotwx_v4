@@ -12,7 +12,7 @@ import { decide } from "@/lib/place/decide";
 import { useDraft } from "@/lib/wizard/store";
 
 export const Route = createFileRoute("/analysis")({
-  head: () => ({ meta: [{ title: "Analysis — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Analysis | OpenIoTwx" }] }),
   component: AnalysisPage,
 });
 

@@ -5,7 +5,7 @@ import { buildPlan, flashHref, needsRaspberryPi } from "@/lib/wizard/plan";
 import { useDraft } from "@/lib/wizard/store";
 
 export const Route = createFileRoute("/flash")({
-  head: () => ({ meta: [{ title: "Flash — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Flash | OpenIoTwx" }] }),
   component: FlashPage,
 });
 
@@ -43,19 +43,19 @@ function FlashPage() {
       <div className="mt-6 flex flex-col gap-2 sm:flex-row">
         <a
           href={planFlash ?? "/flash-wizard/index.html"}
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-kelp px-5 text-sm text-paper"
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-kelp px-5 text-sm text-paper transition-[filter] duration-150 not-disabled:hover:brightness-110"
         >
           {planFlash ? "Configure and flash your plan's board" : "Open the browser flasher"}
         </a>
         <a
           href={DOCS.firmwareZip}
-          className="inline-flex min-h-11 items-center justify-center rounded-full border border-line px-5 text-sm"
+          className="inline-flex min-h-11 items-center justify-center rounded-full border border-line px-5 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep"
         >
           Download Atom Lite source
         </a>
         <a
           href={DOCS.flash}
-          className="inline-flex min-h-11 items-center justify-center rounded-full border border-line px-5 text-sm"
+          className="inline-flex min-h-11 items-center justify-center rounded-full border border-line px-5 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep"
         >
           Open the flashing guide
         </a>
@@ -64,7 +64,7 @@ function FlashPage() {
         <Link
           to={pi ? "/raspberry-pi" : "/deploy"}
           search={pi ? undefined : { station: undefined }}
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-kelp px-5 text-sm font-medium text-paper"
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-kelp px-5 text-sm font-medium text-paper transition-[filter] duration-150 not-disabled:hover:brightness-110"
         >
           {pi ? "Next: set up the Raspberry Pi gateway" : "Next: Deploy and Publish"}
         </Link>

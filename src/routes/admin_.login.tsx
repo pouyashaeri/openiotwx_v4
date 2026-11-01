@@ -64,7 +64,7 @@ function AdminLogin() {
             {error}
           </p>
         ) : null}
-        <button type="submit" disabled={busy} className="min-h-12 rounded-full bg-kelp px-5 text-sm font-medium text-paper disabled:opacity-60">
+        <button type="submit" disabled={busy} className="min-h-12 rounded-full bg-kelp px-5 text-sm font-medium text-paper disabled:opacity-60 transition-[filter] duration-150 not-disabled:hover:brightness-110">
           {busy ? "Checking…" : "Sign in"}
         </button>
       </form>

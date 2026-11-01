@@ -1,6 +1,7 @@
 import { LocateFixed, Search } from "lucide-react";
 import { useState } from "react";
 import { geocode, locate } from "@/lib/place/geocode";
+import { LOCATION_PLACEHOLDER, questionTitle } from "@/lib/wizard/questions";
 import { useDraft } from "@/lib/wizard/store";
 import { hasLocation } from "@/lib/wizard/types";
 
@@ -47,7 +48,7 @@ export function LocationPicker({ compact = false }: { compact?: boolean }) {
     <div>
       {!compact ? (
         <label className="block text-sm text-muted" htmlFor="site-location">
-          Where is it? A town, a ZIP, a corner, or coordinates.
+          {questionTitle("location")}
         </label>
       ) : null}
       <div className="mt-2 flex flex-wrap gap-2">
@@ -61,7 +62,7 @@ export function LocationPicker({ compact = false }: { compact?: boolean }) {
               void search();
             }
           }}
-          placeholder="Boulder, CO or 80302 or 40.015, -105.27"
+          placeholder={LOCATION_PLACEHOLDER}
           className="min-w-0 flex-1 rounded-lg border border-line bg-panel px-4 py-3 text-ink"
           autoComplete="off"
         />
@@ -69,7 +70,7 @@ export function LocationPicker({ compact = false }: { compact?: boolean }) {
           type="button"
           onClick={search}
           disabled={busy !== null}
-          className="inline-flex min-h-12 items-center gap-2 rounded-md bg-brand px-4 text-sm text-surface disabled:opacity-50"
+          className="inline-flex min-h-12 items-center gap-2 rounded-md bg-brand px-4 text-sm text-surface disabled:opacity-50 transition-[filter] duration-150 not-disabled:hover:brightness-110"
         >
           <Search className="size-4" aria-hidden="true" />
           {busy === "search" ? "Looking…" : "Find"}
@@ -78,7 +79,7 @@ export function LocationPicker({ compact = false }: { compact?: boolean }) {
           type="button"
           onClick={useMine}
           disabled={busy !== null}
-          className="inline-flex min-h-12 items-center gap-2 rounded-md border border-line px-4 text-sm disabled:opacity-50"
+          className="inline-flex min-h-12 items-center gap-2 rounded-md border border-line px-4 text-sm disabled:opacity-50 transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep"
         >
           <LocateFixed className="size-4" aria-hidden="true" />
           {busy === "locate" ? "Asking…" : "Use my location"}

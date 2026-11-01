@@ -28,6 +28,8 @@ function atWho(): ChatState {
     ...base,
     answers: { ...base.answers, measures: ["air"], count: 1, surprises: ["dry"] },
     skipped: [],
+    // The extremes question comes straight after measuring and has been answered by now.
+    settled: ["sharp"],
   };
 }
 
@@ -149,7 +151,7 @@ describe("'all of them except ...'", () => {
 
   it("moves on to the next question afterwards", async () => {
     const turn = await handleUserMessage(atMeasures(), "all of them except air and rain");
-    assert.equal(nextField(turn.state)?.key, "count");
+    assert.equal(nextField(turn.state)?.key, "sharp");
   });
 });
 
@@ -188,7 +190,7 @@ describe("tapping several choices", () => {
   it("applies the chosen ids exactly", () => {
     const turn = applySelection(atMeasures(), "measures", ["rain", "soil"]);
     assert.deepEqual(turn.state.answers.measures, ["rain", "soil"]);
-    assert.equal(turn.asking?.key, "count");
+    assert.equal(turn.asking?.key, "sharp");
   });
 
   it("drops ids that are not on the list, and asks for at least one", () => {

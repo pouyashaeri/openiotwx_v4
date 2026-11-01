@@ -7,37 +7,36 @@ import {
   PLACES,
   POWERS,
   PROGRESS,
+  RESOURCES,
+  SHARING,
   SURPRISES,
   WHO,
 } from "../wizard/catalog.ts";
+import { SURVEY, questionTitle, type SurveyKey } from "../wizard/questions.ts";
+import type { Intent } from "../wizard/types.ts";
 
-/** Everything the chat can fill in. Same fields, same ids as the step-by-step wizard. */
-export type FieldKey =
-  | "intent"
-  | "place"
-  | "power"
-  | "link"
-  | "measures"
-  | "count"
-  | "surprises"
-  | "who"
-  | "progress"
-  | "gaps"
-  | "siteName";
+/**
+ * Everything the chat can fill in: the survey's own questions, with the survey's own ids. The chat's
+ * wording and choices come from `questions.ts` and `catalog.ts`, the same files the survey page reads, so
+ * it asks exactly what the survey asks.
+ */
+export type FieldKey = SurveyKey;
 
 export type ChatOption = { id: string | number; title: string; hint: string };
 
 export type FieldSpec = {
   key: FieldKey;
-  kind: "single" | "multi" | "text";
-  /** The question as the chat asks it, in plain words. */
+  kind: "single" | "multi" | "text" | "toggle" | "location";
+  /** The question, exactly as the survey asks it. For one whose wording depends on the answers so far, use `askTitle`. */
   question: string;
+  /** The line the survey puts under the question. */
+  body: string;
   /** Short label used when the chat repeats an answer back. */
   label: string;
   options: ChatOption[];
-  /** The person may say "skip" and the plan is still written. */
+  /** The person may say "skip" and the plan is still written. The survey does not require these. */
   skippable: boolean;
-  /** Only asked on the community paths, like the wizard's last steps. */
+  /** Only asked on the community paths, like the survey's community steps. */
   communityOnly: boolean;
 };
 
@@ -45,117 +44,58 @@ const opts = (
   list: ReadonlyArray<{ id: string | number; title: string; body: string }>,
 ): ChatOption[] => list.map((item) => ({ id: item.id, title: item.title, hint: item.body }));
 
+const YES_NO: ChatOption[] = [
+  { id: "yes", title: "Yes", hint: "" },
+  { id: "no", title: "No", hint: "" },
+];
+
+const field = (
+  key: FieldKey,
+  kind: FieldSpec["kind"],
+  label: string,
+  options: ChatOption[],
+  flags: { skippable?: boolean; communityOnly?: boolean } = {},
+): FieldSpec => ({
+  key,
+  kind,
+  label,
+  question: questionTitle(key),
+  body: SURVEY[key].body,
+  options,
+  skippable: flags.skippable ?? false,
+  communityOnly: flags.communityOnly ?? false,
+});
+
+/** In the order the survey asks them. */
 export const FIELDS: FieldSpec[] = [
-  {
-    key: "intent",
-    kind: "single",
-    label: "Path",
-    question:
-      "What brings you here? For example: a place and the people in it, one site you look after, a class or lab, or building a station to learn.",
-    options: opts(INTENTS),
-    skippable: false,
-    communityOnly: false,
-  },
-  {
-    key: "place",
-    kind: "single",
-    label: "Place",
-    question:
-      "Where will your station be placed? Indoors, near your home, around a garden or farm, in town, or somewhere more remote?",
-    options: opts(PLACES),
-    skippable: false,
-    communityOnly: false,
-  },
-  {
-    key: "power",
-    kind: "single",
-    label: "Power",
-    question: "How will your station be powered: a wall outlet nearby, or a solar panel?",
-    options: opts(POWERS),
-    skippable: false,
-    communityOnly: false,
-  },
-  {
-    key: "link",
-    kind: "single",
-    label: "Connection",
-    question:
-      "What communication technology is available where you want to place it: cellular service, Wi-Fi, a wired network, or none of these?",
-    options: opts(LINKS),
-    skippable: false,
-    communityOnly: false,
-  },
-  {
-    key: "measures",
-    kind: "multi",
-    label: "Measuring",
-    question:
-      "What data should your station collect? For example temperature and humidity, rainfall, soil moisture, air quality, wind, carbon dioxide, ozone, or sunlight.",
-    options: opts(MEASURES),
-    skippable: false,
-    communityOnly: false,
-  },
-  {
-    key: "count",
-    kind: "single",
-    label: "Stations",
-    question:
-      "How many stations do you want: one, a handful (about three), or a small network (about six)?",
-    options: opts(COUNTS),
-    skippable: false,
-    communityOnly: false,
-  },
-  {
-    key: "surprises",
-    kind: "multi",
-    label: "Caught people off guard",
-    question:
-      'What has caught people off guard at your site? For example flooding, heat, smoky air, storms, dry ground, or power cuts. Say "skip" if nothing comes to mind.',
-    options: opts(SURPRISES),
-    skippable: true,
-    communityOnly: true,
-  },
-  {
-    key: "who",
-    kind: "multi",
-    label: "Who it is for",
-    question:
-      'Who needs to be able to use your station? Neighbors, a school, people who work the land, people who fix things when they break, or a lab or agency partner. "Skip" is fine.',
-    options: opts(WHO),
-    skippable: true,
-    communityOnly: true,
-  },
-  {
-    key: "progress",
-    kind: "multi",
-    label: "Better in six months",
-    question:
-      "Six months from now, what would matter most? A station people trust, readings you control, a one-page checklist, a backup site, or having practiced the plan once.",
-    options: opts(PROGRESS),
-    skippable: true,
-    communityOnly: true,
-  },
-  {
-    key: "gaps",
-    kind: "multi",
-    label: "In the way",
-    question:
-      'What is in the way right now? No measurements yet, data you cannot use, nobody clearly responsible, not sure where to put it, or keeping it running. Or "skip".',
-    options: opts(GAPS),
-    skippable: true,
-    communityOnly: true,
-  },
-  {
-    key: "siteName",
-    kind: "text",
-    label: "Name",
-    question: 'Last one: what should we call this place? Say "skip" and I will use a generic name.',
-    options: [],
-    skippable: true,
-    communityOnly: false,
-  },
+  field("intent", "single", "Path", opts(INTENTS)),
+  field("place", "single", "Place", opts(PLACES)),
+  field("power", "single", "Power", opts(POWERS)),
+  field("link", "single", "Connection", opts(LINKS)),
+  field("measures", "multi", "Measuring", opts(MEASURES)),
+  field("sharp", "toggle", "Extremes", YES_NO),
+  field("count", "single", "Stations", opts(COUNTS)),
+  field("surprises", "multi", "Caught people off guard", opts(SURPRISES), { skippable: true, communityOnly: true }),
+  field("who", "multi", "Who it is for", opts(WHO), { skippable: true, communityOnly: true }),
+  field("progress", "multi", "Better in six months", opts(PROGRESS), { skippable: true, communityOnly: true }),
+  field("gaps", "multi", "In the way", opts(GAPS), { skippable: true, communityOnly: true }),
+  field("resources", "multi", "On hand", opts(RESOURCES), { skippable: true }),
+  field("sharing", "single", "Readings live", opts(SHARING)),
+  field("gdex", "toggle", "GDEX", YES_NO),
+  field("siteName", "text", "Name", [], { skippable: true }),
+  field("location", "location", "Location", [], { skippable: true }),
 ];
 
 export const FIELD_BY_KEY: Record<FieldKey, FieldSpec> = Object.fromEntries(
-  FIELDS.map((field) => [field.key, field]),
+  FIELDS.map((f) => [f.key, f]),
 ) as Record<FieldKey, FieldSpec>;
+
+/** The question's wording for this person (the survey words "surprises" differently on a teaching path). */
+export function askTitle(spec: FieldSpec, intent: Intent | null): string {
+  return questionTitle(spec.key, intent);
+}
+
+/** The question and the line under it, as one message. */
+export function askText(spec: FieldSpec, intent: Intent | null): string {
+  return `${askTitle(spec, intent)}\n${spec.body}`;
+}

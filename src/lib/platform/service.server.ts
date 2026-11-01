@@ -106,7 +106,8 @@ export async function deletePlan(userId: string, id: string) {
 
 export const STATION_COLS = `id, owner_id, plan_id, slug, name, description, latitude, longitude, elevation_m,
   config_id, link, expected_metrics, status, is_public, api_key_hint, rate_limit_per_min,
-  last_seen_at, last_values, created_at, chords_id, strict_metrics, source, remote, ncar_network, ncar_joined_at, gateway_id`;
+  last_seen_at, last_values, created_at, chords_id, strict_metrics, source, remote, ncar_network, ncar_joined_at, gateway_id,
+  gdex_consent, gdex_steward, gdex_license, gdex_consent_at`;
 
 export type StationRow = {
   id: string;
@@ -132,6 +133,11 @@ export type StationRow = {
   ncar_network: boolean;
   ncar_joined_at: string | null;
   gateway_id: string | null;
+  /** GDEX release consent: only stations in the NCAR network with a named steward are ever packaged. */
+  gdex_consent: boolean;
+  gdex_steward: string;
+  gdex_license: string;
+  gdex_consent_at: string | null;
   strict_metrics: boolean;
   source: "device" | "chords";
   remote: {

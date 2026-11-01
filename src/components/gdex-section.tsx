@@ -6,6 +6,7 @@ import { useConnections } from "@/lib/connect/settings";
 import { SHARING, TOOLS } from "@/lib/wizard/catalog";
 import type { SensorPick } from "@/lib/wizard/plan";
 import { useDraft } from "@/lib/wizard/store";
+import { GdexReady } from "@/components/gdex-ready";
 import { hasLocation } from "@/lib/wizard/types";
 import { cn } from "@/lib/utils";
 
@@ -96,6 +97,8 @@ export function GdexSection({ sensors, stationCount }: { sensors: SensorPick[]; 
         the project ends.
       </p>
 
+      <GdexReady />
+
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="rounded-lg border border-line bg-panel px-4 py-4">
           <div className="flex items-start justify-between gap-3">
@@ -173,7 +176,7 @@ export function GdexSection({ sensors, stationCount }: { sensors: SensorPick[]; 
                 type="button"
                 onClick={record}
                 disabled={saving}
-                className="min-h-11 rounded-md bg-brand px-4 text-sm text-surface disabled:opacity-50"
+                className="min-h-11 rounded-md bg-brand px-4 text-sm text-surface disabled:opacity-50 transition-[filter] duration-150 not-disabled:hover:brightness-110"
               >
                 {saving ? "Recording…" : "Record this decision"}
               </button>
@@ -193,20 +196,25 @@ export function GdexSection({ sensors, stationCount }: { sensors: SensorPick[]; 
             <Row term="Stations" detail={`${stationCount}, id prefix ${stationId || "station"}`} />
             <Row term="Variables" detail={variables.length ? variables.join("; ") : "Chosen in the wizard"} />
             <Row term="Interval" detail="As published by the station (typically 1–10 minutes), plus hourly means" />
-            <Row term="Format" detail="CF-1.8 NetCDF per month, plus Parquet; a JSON metadata record with place, sensors, and contact" />
+            <Row term="Format" detail="CF-1.8 NetCDF per month or quarter, a CSV copy, and a JSON metadata record with place, variables, license and contact" />
             <Row
               term="Location"
-              detail={hasLocation(answers.location) ? `${answers.location.lat.toFixed(4)}, ${answers.location.lon.toFixed(4)} (rounded to 100 m in the public record)` : "Not set"}
+              detail={hasLocation(answers.location) ? `${answers.location.lat.toFixed(4)}, ${answers.location.lon.toFixed(4)} (rounded to about 110 m in the released files)` : "Not set"}
             />
             <Row term="License" detail={consent.license} />
             <Row term="Not included" detail="Names of residents, exact addresses, anything from the chat, ticked checklist boxes" />
           </dl>
           <p className="mt-3 text-xs text-muted">
-            The publisher (<code>infra/services/gdex_publisher</code>) writes the package to <code>exports/</code> first so a person can open it. Sending to GDEX uses the submission workflow at{" "}
+            When the stations are running, each steward gives consent on the station&apos;s page. Releases are built every month or quarter, checked by a person, and pulled by {TOOLS.gdex.name} from a public
+            manifest; GDEX assigns the DOI.{" "}
+            <Link to="/gdex" className="underline underline-offset-4">
+              How it works
+            </Link>
+            . A new submission starts at{" "}
             <a className="underline underline-offset-4" href={TOOLS.gdex.url}>
               gdex.ucar.edu
-            </a>{" "}
-            and needs a collection assigned by the GDEX team; the README has the request template.
+            </a>
+            .
           </p>
           <p className="no-print mt-3 text-xs text-muted">
             Change the sharing level itself in the{" "}

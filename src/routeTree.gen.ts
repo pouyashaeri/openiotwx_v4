@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AnalysisRouteImport } from './routes/analysis'
 import { Route as ChordsRouteImport } from './routes/chords'
 import { Route as CommunityRouteImport } from './routes/community'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DeployRouteImport } from './routes/deploy'
 import { Route as FlashRouteImport } from './routes/flash'
 import { Route as ForecastRouteImport } from './routes/forecast'
@@ -31,16 +32,21 @@ import { Route as WizardRouteImport } from './routes/wizard'
 import { Route as AdminLoginRouteImport } from './routes/admin_.login'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
+import { Route as GdexIndexRouteImport } from './routes/gdex.index'
+import { Route as GdexDatasetDotjsonRouteImport } from './routes/gdex.dataset[.]json'
+import { Route as GdexManifestDotjsonRouteImport } from './routes/gdex.manifest[.]json'
 import { Route as HubSplatRouteImport } from './routes/hub.$'
 import { Route as InstrumentsFileRouteImport } from './routes/instruments.$file'
 import { Route as MeasurementsUrl_createRouteImport } from './routes/measurements.url_create'
 import { Route as StationsIndexRouteImport } from './routes/stations.index'
 import { Route as StationsSlugRouteImport } from './routes/stations.$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiGdexReleaseRouteImport } from './routes/api/gdex.release'
 import { Route as ApiIngestBulkRouteImport } from './routes/api/ingest.bulk'
 import { Route as ApiIngestGatewayRouteImport } from './routes/api/ingest.gateway'
 import { Route as ApiStationsSlugCsvRouteImport } from './routes/api/stations.$slug.csv'
 import { Route as ApiV1DataFileRouteImport } from './routes/api.v1.data.$file'
+import { Route as GdexReleasesPeriodFileRouteImport } from './routes/gdex.releases.$period.$file'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +76,11 @@ const ChordsRoute = ChordsRouteImport.update({
 const CommunityRoute = CommunityRouteImport.update({
   id: '/community',
   path: '/community',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeployRoute = DeployRouteImport.update({
@@ -152,6 +163,21 @@ const ApiIngestRoute = ApiIngestRouteImport.update({
   path: '/api/ingest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GdexIndexRoute = GdexIndexRouteImport.update({
+  id: '/gdex/',
+  path: '/gdex/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GdexDatasetDotjsonRoute = GdexDatasetDotjsonRouteImport.update({
+  id: '/gdex/dataset.json',
+  path: '/gdex/dataset.json',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GdexManifestDotjsonRoute = GdexManifestDotjsonRouteImport.update({
+  id: '/gdex/manifest.json',
+  path: '/gdex/manifest.json',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HubSplatRoute = HubSplatRouteImport.update({
   id: '/hub/$',
   path: '/hub/$',
@@ -182,6 +208,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGdexReleaseRoute = ApiGdexReleaseRouteImport.update({
+  id: '/api/gdex/release',
+  path: '/api/gdex/release',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIngestBulkRoute = ApiIngestBulkRouteImport.update({
   id: '/bulk',
   path: '/bulk',
@@ -202,6 +233,11 @@ const ApiV1DataFileRoute = ApiV1DataFileRouteImport.update({
   path: '/api/v1/data/$file',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GdexReleasesPeriodFileRoute = GdexReleasesPeriodFileRouteImport.update({
+  id: '/gdex/releases/$period/$file',
+  path: '/gdex/releases/$period/$file',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -210,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/analysis': typeof AnalysisRoute
   '/chords': typeof ChordsRoute
   '/community': typeof CommunityRoute
+  '/contact': typeof ContactRoute
   '/deploy': typeof DeployRoute
   '/flash': typeof FlashRoute
   '/forecast': typeof ForecastRoute
@@ -226,16 +263,21 @@ export interface FileRoutesByFullPath {
   '/admin/login': typeof AdminLoginRoute
   '/api/health': typeof ApiHealthRoute
   '/api/ingest': typeof ApiIngestRouteWithChildren
+  '/gdex/dataset.json': typeof GdexDatasetDotjsonRoute
+  '/gdex/manifest.json': typeof GdexManifestDotjsonRoute
   '/hub/$': typeof HubSplatRoute
   '/instruments/$file': typeof InstrumentsFileRoute
   '/measurements/url_create': typeof MeasurementsUrl_createRoute
   '/stations/$slug': typeof StationsSlugRoute
+  '/gdex/': typeof GdexIndexRoute
   '/stations/': typeof StationsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/gdex/release': typeof ApiGdexReleaseRoute
   '/api/ingest/bulk': typeof ApiIngestBulkRoute
   '/api/ingest/gateway': typeof ApiIngestGatewayRoute
   '/api/stations/$slug/csv': typeof ApiStationsSlugCsvRoute
   '/api/v1/data/$file': typeof ApiV1DataFileRoute
+  '/gdex/releases/$period/$file': typeof GdexReleasesPeriodFileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -244,6 +286,7 @@ export interface FileRoutesByTo {
   '/analysis': typeof AnalysisRoute
   '/chords': typeof ChordsRoute
   '/community': typeof CommunityRoute
+  '/contact': typeof ContactRoute
   '/deploy': typeof DeployRoute
   '/flash': typeof FlashRoute
   '/forecast': typeof ForecastRoute
@@ -260,16 +303,21 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/api/health': typeof ApiHealthRoute
   '/api/ingest': typeof ApiIngestRouteWithChildren
+  '/gdex/dataset.json': typeof GdexDatasetDotjsonRoute
+  '/gdex/manifest.json': typeof GdexManifestDotjsonRoute
   '/hub/$': typeof HubSplatRoute
   '/instruments/$file': typeof InstrumentsFileRoute
   '/measurements/url_create': typeof MeasurementsUrl_createRoute
   '/stations/$slug': typeof StationsSlugRoute
+  '/gdex': typeof GdexIndexRoute
   '/stations': typeof StationsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/gdex/release': typeof ApiGdexReleaseRoute
   '/api/ingest/bulk': typeof ApiIngestBulkRoute
   '/api/ingest/gateway': typeof ApiIngestGatewayRoute
   '/api/stations/$slug/csv': typeof ApiStationsSlugCsvRoute
   '/api/v1/data/$file': typeof ApiV1DataFileRoute
+  '/gdex/releases/$period/$file': typeof GdexReleasesPeriodFileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -279,6 +327,7 @@ export interface FileRoutesById {
   '/analysis': typeof AnalysisRoute
   '/chords': typeof ChordsRoute
   '/community': typeof CommunityRoute
+  '/contact': typeof ContactRoute
   '/deploy': typeof DeployRoute
   '/flash': typeof FlashRoute
   '/forecast': typeof ForecastRoute
@@ -295,16 +344,21 @@ export interface FileRoutesById {
   '/admin_/login': typeof AdminLoginRoute
   '/api/health': typeof ApiHealthRoute
   '/api/ingest': typeof ApiIngestRouteWithChildren
+  '/gdex/dataset.json': typeof GdexDatasetDotjsonRoute
+  '/gdex/manifest.json': typeof GdexManifestDotjsonRoute
   '/hub/$': typeof HubSplatRoute
   '/instruments/$file': typeof InstrumentsFileRoute
   '/measurements/url_create': typeof MeasurementsUrl_createRoute
   '/stations/$slug': typeof StationsSlugRoute
+  '/gdex/': typeof GdexIndexRoute
   '/stations/': typeof StationsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/gdex/release': typeof ApiGdexReleaseRoute
   '/api/ingest/bulk': typeof ApiIngestBulkRoute
   '/api/ingest/gateway': typeof ApiIngestGatewayRoute
   '/api/stations/$slug/csv': typeof ApiStationsSlugCsvRoute
   '/api/v1/data/$file': typeof ApiV1DataFileRoute
+  '/gdex/releases/$period/$file': typeof GdexReleasesPeriodFileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -315,6 +369,7 @@ export interface FileRouteTypes {
     | '/analysis'
     | '/chords'
     | '/community'
+    | '/contact'
     | '/deploy'
     | '/flash'
     | '/forecast'
@@ -331,16 +386,21 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/api/health'
     | '/api/ingest'
+    | '/gdex/dataset.json'
+    | '/gdex/manifest.json'
     | '/hub/$'
     | '/instruments/$file'
     | '/measurements/url_create'
     | '/stations/$slug'
+    | '/gdex/'
     | '/stations/'
     | '/api/auth/$'
+    | '/api/gdex/release'
     | '/api/ingest/bulk'
     | '/api/ingest/gateway'
     | '/api/stations/$slug/csv'
     | '/api/v1/data/$file'
+    | '/gdex/releases/$period/$file'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -349,6 +409,7 @@ export interface FileRouteTypes {
     | '/analysis'
     | '/chords'
     | '/community'
+    | '/contact'
     | '/deploy'
     | '/flash'
     | '/forecast'
@@ -365,16 +426,21 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/api/health'
     | '/api/ingest'
+    | '/gdex/dataset.json'
+    | '/gdex/manifest.json'
     | '/hub/$'
     | '/instruments/$file'
     | '/measurements/url_create'
     | '/stations/$slug'
+    | '/gdex'
     | '/stations'
     | '/api/auth/$'
+    | '/api/gdex/release'
     | '/api/ingest/bulk'
     | '/api/ingest/gateway'
     | '/api/stations/$slug/csv'
     | '/api/v1/data/$file'
+    | '/gdex/releases/$period/$file'
   id:
     | '__root__'
     | '/'
@@ -383,6 +449,7 @@ export interface FileRouteTypes {
     | '/analysis'
     | '/chords'
     | '/community'
+    | '/contact'
     | '/deploy'
     | '/flash'
     | '/forecast'
@@ -399,16 +466,21 @@ export interface FileRouteTypes {
     | '/admin_/login'
     | '/api/health'
     | '/api/ingest'
+    | '/gdex/dataset.json'
+    | '/gdex/manifest.json'
     | '/hub/$'
     | '/instruments/$file'
     | '/measurements/url_create'
     | '/stations/$slug'
+    | '/gdex/'
     | '/stations/'
     | '/api/auth/$'
+    | '/api/gdex/release'
     | '/api/ingest/bulk'
     | '/api/ingest/gateway'
     | '/api/stations/$slug/csv'
     | '/api/v1/data/$file'
+    | '/gdex/releases/$period/$file'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -418,6 +490,7 @@ export interface RootRouteChildren {
   AnalysisRoute: typeof AnalysisRoute
   ChordsRoute: typeof ChordsRoute
   CommunityRoute: typeof CommunityRoute
+  ContactRoute: typeof ContactRoute
   DeployRoute: typeof DeployRoute
   FlashRoute: typeof FlashRoute
   ForecastRoute: typeof ForecastRoute
@@ -434,14 +507,19 @@ export interface RootRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiIngestRoute: typeof ApiIngestRouteWithChildren
+  GdexDatasetDotjsonRoute: typeof GdexDatasetDotjsonRoute
+  GdexManifestDotjsonRoute: typeof GdexManifestDotjsonRoute
   HubSplatRoute: typeof HubSplatRoute
   InstrumentsFileRoute: typeof InstrumentsFileRoute
   MeasurementsUrl_createRoute: typeof MeasurementsUrl_createRoute
   StationsSlugRoute: typeof StationsSlugRoute
+  GdexIndexRoute: typeof GdexIndexRoute
   StationsIndexRoute: typeof StationsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiGdexReleaseRoute: typeof ApiGdexReleaseRoute
   ApiStationsSlugCsvRoute: typeof ApiStationsSlugCsvRoute
   ApiV1DataFileRoute: typeof ApiV1DataFileRoute
+  GdexReleasesPeriodFileRoute: typeof GdexReleasesPeriodFileRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -486,6 +564,13 @@ declare module '@tanstack/react-router' {
       path: '/community'
       fullPath: '/community'
       preLoaderRoute: typeof CommunityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/deploy': {
@@ -600,6 +685,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIngestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gdex/': {
+      id: '/gdex/'
+      path: '/gdex'
+      fullPath: '/gdex/'
+      preLoaderRoute: typeof GdexIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gdex/dataset.json': {
+      id: '/gdex/dataset.json'
+      path: '/gdex/dataset.json'
+      fullPath: '/gdex/dataset.json'
+      preLoaderRoute: typeof GdexDatasetDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gdex/manifest.json': {
+      id: '/gdex/manifest.json'
+      path: '/gdex/manifest.json'
+      fullPath: '/gdex/manifest.json'
+      preLoaderRoute: typeof GdexManifestDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/hub/$': {
       id: '/hub/$'
       path: '/hub/$'
@@ -642,6 +748,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/gdex/release': {
+      id: '/api/gdex/release'
+      path: '/api/gdex/release'
+      fullPath: '/api/gdex/release'
+      preLoaderRoute: typeof ApiGdexReleaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/ingest/bulk': {
       id: '/api/ingest/bulk'
       path: '/bulk'
@@ -670,6 +783,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1DataFileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gdex/releases/$period/$file': {
+      id: '/gdex/releases/$period/$file'
+      path: '/gdex/releases/$period/$file'
+      fullPath: '/gdex/releases/$period/$file'
+      preLoaderRoute: typeof GdexReleasesPeriodFileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -694,6 +814,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalysisRoute: AnalysisRoute,
   ChordsRoute: ChordsRoute,
   CommunityRoute: CommunityRoute,
+  ContactRoute: ContactRoute,
   DeployRoute: DeployRoute,
   FlashRoute: FlashRoute,
   ForecastRoute: ForecastRoute,
@@ -710,14 +831,19 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLoginRoute: AdminLoginRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiIngestRoute: ApiIngestRouteWithChildren,
+  GdexDatasetDotjsonRoute: GdexDatasetDotjsonRoute,
+  GdexManifestDotjsonRoute: GdexManifestDotjsonRoute,
   HubSplatRoute: HubSplatRoute,
   InstrumentsFileRoute: InstrumentsFileRoute,
   MeasurementsUrl_createRoute: MeasurementsUrl_createRoute,
   StationsSlugRoute: StationsSlugRoute,
+  GdexIndexRoute: GdexIndexRoute,
   StationsIndexRoute: StationsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiGdexReleaseRoute: ApiGdexReleaseRoute,
   ApiStationsSlugCsvRoute: ApiStationsSlugCsvRoute,
   ApiV1DataFileRoute: ApiV1DataFileRoute,
+  GdexReleasesPeriodFileRoute: GdexReleasesPeriodFileRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

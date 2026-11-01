@@ -477,7 +477,7 @@ export function NetworkMap() {
   }, [ready, base]);
 
   const chip = (on: boolean) =>
-    `inline-flex min-h-9 items-center rounded-full border px-3 text-sm ${on ? "border-kelp bg-kelp text-paper" : "border-line bg-card text-ink"}`;
+    `inline-flex min-h-9 items-center rounded-full border px-3 text-sm transition-colors duration-150 ${on ? "border-kelp bg-kelp text-paper hover:brightness-110" : "border-line bg-card text-ink hover:border-kelp hover:bg-paper-deep"}`;
 
   return (
     <div className="flex flex-col gap-3">
@@ -566,7 +566,7 @@ export function NetworkMap() {
               aria-label="Add a CHORDS portal address"
               className="min-h-9 w-48 rounded-full border border-line bg-card px-3 text-sm"
             />
-            <button className="min-h-9 rounded-full border border-line bg-card px-3 text-sm">
+            <button className="min-h-9 rounded-full border border-line bg-card px-3 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep">
               Add
             </button>
           </form>
@@ -608,7 +608,7 @@ export function NetworkMap() {
           <option value="satellite">Satellite</option>
         </select>
         <button
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-card px-4 text-sm"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-card px-4 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep"
           onClick={() => api.current?.locate()}
         >
           <LocateFixed className="size-4" /> Near me

@@ -2,7 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { NetworkMap } from "@/components/network-map";
 
 export const Route = createFileRoute("/map")({
-  head: () => ({ meta: [{ title: "Network map — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Network map | OpenIoTwx" }] }),
   component: MapPage,
 });
 

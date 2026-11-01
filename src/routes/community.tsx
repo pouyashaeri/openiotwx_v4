@@ -12,7 +12,7 @@ import { useDraft } from "@/lib/wizard/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/community")({
-  head: () => ({ meta: [{ title: "Community — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Community | OpenIoTwx" }] }),
   component: CommunityPage,
 });
 
@@ -164,7 +164,7 @@ function CommunityPage() {
             </p>
           </div>
           <div className="no-print flex flex-wrap gap-2">
-            <button type="button" onClick={copyQueue} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line px-3 text-sm">
+            <button type="button" onClick={copyQueue} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line px-3 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep">
               <Copy className="size-4" aria-hidden="true" />
               Copy queue
             </button>
@@ -172,11 +172,11 @@ function CommunityPage() {
               type="button"
               onClick={syncQueue}
               disabled={serverOk === false}
-              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand px-3 text-sm text-surface disabled:opacity-50"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand px-3 text-sm text-surface disabled:opacity-50 transition-[filter] duration-150 not-disabled:hover:brightness-110"
             >
               Save to community server
             </button>
-            <a href={DOCS.stl} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line px-3 text-sm">
+            <a href={DOCS.stl} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line px-3 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep">
               <Printer className="size-4" aria-hidden="true" />
               STL files
             </a>
@@ -263,7 +263,7 @@ function CommunityPage() {
                 type="button"
                 aria-pressed={filter === id}
                 onClick={() => setFilter(id)}
-                className={cn("min-h-9 rounded-md border px-3 text-sm", filter === id ? "border-brand bg-brand-soft" : "border-line bg-panel")}
+                className={cn("min-h-9 rounded-md border px-3 text-sm transition-colors duration-150", filter === id ? "border-brand bg-brand-soft hover:brightness-95" : "border-line bg-panel hover:border-brand hover:bg-paper-deep")}
               >
                 {id === "all" ? "All" : OFFERS.find((o) => o.id === id)?.label}
               </button>
@@ -425,7 +425,7 @@ function JoinSection({ serverOk }: { serverOk: boolean | null }) {
                 type="button"
                 aria-pressed={offers.includes(o.id)}
                 onClick={() => toggle(o.id)}
-                className={cn("rounded-md border px-3 py-2 text-left text-sm", offers.includes(o.id) ? "border-brand bg-brand-soft" : "border-line bg-surface")}
+                className={cn("rounded-md border px-3 py-2 text-left text-sm transition-colors duration-150", offers.includes(o.id) ? "border-brand bg-brand-soft hover:brightness-95" : "border-line bg-surface hover:border-brand hover:bg-paper-deep")}
               >
                 <span className="block">{o.label}</span>
                 <span className="block text-xs text-muted">{o.blurb}</span>
@@ -445,7 +445,7 @@ function JoinSection({ serverOk }: { serverOk: boolean | null }) {
           />
         </label>
         <div className="sm:col-span-2">
-          <button type="button" onClick={join} disabled={saving} className="min-h-11 rounded-md bg-brand px-5 text-sm font-medium text-surface disabled:opacity-50">
+          <button type="button" onClick={join} disabled={saving} className="min-h-11 rounded-md bg-brand px-5 text-sm font-medium text-surface disabled:opacity-50 transition-[filter] duration-150 not-disabled:hover:brightness-110">
             {saving ? "Posting…" : "Post my offer"}
           </button>
         </div>

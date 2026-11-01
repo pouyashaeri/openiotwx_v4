@@ -1,12 +1,12 @@
-import { blankAnswers, type Answers } from "../wizard/types.ts";
-import { isSkip, matchMulti, matchSingle, mentionsExtremes, parseSelection } from "./keywords.ts";
-import { FIELDS, FIELD_BY_KEY, type FieldKey, type FieldSpec } from "./spec.ts";
+import { blankAnswers, hasLocation, type Answers } from "../wizard/types.ts";
+import { isSkip, matchMulti, matchSingle, matchYesNo, mentionsExtremes, onlyMissing, parseSelection, readSupport, type SupportRead } from "./keywords.ts";
+import { FIELDS, FIELD_BY_KEY, askText, type FieldKey, type FieldSpec } from "./spec.ts";
 
 /**
  * The conversation is driven by this file, not by the language model. The model only reads one
  * free-text answer and says which of our existing choices it matches. This code checks every
- * value against the wizard's own choice lists, decides the next question, and writes the same
- * answers the step-by-step wizard writes. A small or confused model cannot leave the decision tree.
+ * value against the survey's own choice lists, decides the next question, and writes the same
+ * answers the step-by-step survey writes. A small or confused model cannot leave the decision tree.
  */
 
 export type ChatState = {
@@ -14,10 +14,12 @@ export type ChatState = {
   siteName: string;
   /** Optional questions the person chose to skip. */
   skipped: FieldKey[];
+  /** On/off questions (and others with no value of their own) that have been answered. */
+  settled: FieldKey[];
 };
 
 export function initialState(): ChatState {
-  return { answers: blankAnswers(), siteName: "", skipped: [] };
+  return { answers: blankAnswers(), siteName: "", skipped: [], settled: [] };
 }
 
 /** What a model (or the keyword fallback) found in one message. Already validated. */
@@ -26,15 +28,20 @@ export type Extraction = {
   place?: string;
   power?: string;
   link?: string;
+  sharing?: string;
   count?: 1 | 3 | 6;
   measures?: string[];
   surprises?: string[];
   who?: string[];
   progress?: string[];
   gaps?: string[];
+  resources?: string[];
   sharp?: boolean;
+  gdex?: boolean;
   /** Ids to leave out of the list being asked about ("all of them except ..."). */
   exclude?: string[];
+  /** The model judged that this message is not an answer but a request for help. */
+  topic?: "support";
 };
 
 /**
@@ -47,8 +54,12 @@ export type Extractor = (request: {
   state: ChatState;
 }) => Promise<unknown | null>;
 
-const SINGLE_KEYS = ["intent", "place", "power", "link"] as const;
-const MULTI_KEYS = ["measures", "surprises", "who", "progress", "gaps"] as const;
+/** Turns a place the person typed into coordinates. The chat widget passes the survey's own lookup. */
+export type Locator = (query: string) => Promise<{ lat: number; lon: number; label: string } | null>;
+
+const SINGLE_KEYS = ["intent", "place", "power", "link", "sharing"] as const;
+const MULTI_KEYS = ["measures", "surprises", "who", "progress", "gaps", "resources"] as const;
+const TOGGLE_KEYS = ["sharp", "gdex"] as const;
 
 function allowed(key: FieldKey): Set<string> {
   return new Set(FIELD_BY_KEY[key].options.map((option) => String(option.id)));
@@ -61,7 +72,7 @@ function bucketCount(value: unknown): 1 | 3 | 6 | null {
   return n <= 4 ? 3 : 6;
 }
 
-/** Keep only values that exist in the wizard's own choice lists. Everything else is dropped. */
+/** Keep only values that exist in the survey's own choice lists. Everything else is dropped. */
 export function validateExtraction(raw: unknown): Extraction {
   const out: Extraction = {};
   if (!raw || typeof raw !== "object") return out;
@@ -84,12 +95,51 @@ export function validateExtraction(raw: unknown): Extraction {
   }
   const count = bucketCount(source.count);
   if (count) out.count = count;
-  if (source.sharp === true) out.sharp = true;
+  for (const key of TOGGLE_KEYS) {
+    const value = source[key];
+    if (value === true || value === false) out[key] = value;
+  }
   if (Array.isArray(source.exclude)) {
     const ids = source.exclude.filter((item): item is string => typeof item === "string");
     if (ids.length) out.exclude = [...new Set(ids)];
   }
+  if (source.topic === "support") out.topic = "support";
   return out;
+}
+
+/**
+ * A small model sometimes fills in fields nobody mentioned. The question being asked is taken from the
+ * model as it is; an answer to any other question is kept only when the person's own words agree with it.
+ * When the message reads like a problem, everything must agree, so it goes to support instead of into the plan.
+ */
+function onlyWhatWasSaid(found: Extraction, current: FieldSpec | null, message: string, problem: boolean): Extraction {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(found)) {
+    if (key === "siteName" || key === "location") continue;
+    if (key === "exclude") {
+      out[key] = value;
+      continue;
+    }
+    // A message that reads like a problem is not trusted even for the question asked, unless the words agree.
+    if (current && key === current.key && !problem) {
+      // A one-choice question: a choice the words only mention as missing ("no outlet") is not picked.
+      // Lists are left to the include/exclude reading in applySelectionWording.
+      if (Array.isArray(value) || !onlyMissing(current.key, String(value), message)) out[key] = value;
+      continue;
+    }
+    const field = FIELD_BY_KEY[key as FieldKey];
+    if (!field) continue;
+    if (field.kind === "multi") {
+      const said = matchMulti(field.key, message);
+      const agreed = (value as string[]).filter((id) => said.includes(id));
+      if (agreed.length) out[key] = agreed;
+    } else if (field.kind === "toggle") {
+      if (matchYesNo(message) === value) out[key] = value;
+    } else if (matchSingle(field.key, message) === value) {
+      out[key] = value;
+    }
+  }
+  return out as Extraction;
 }
 
 function keywordExtraction(current: FieldSpec | null, message: string): Extraction {
@@ -104,6 +154,9 @@ function keywordExtraction(current: FieldSpec | null, message: string): Extracti
     const hits = matchMulti(current.key, parseSelection(current.key, message).includeText);
     if (hits.length) (out as Record<string, unknown>)[current.key] = hits;
     if (current.key === "measures" && mentionsExtremes(message)) out.sharp = true;
+  } else if (current.kind === "toggle") {
+    const answer = matchYesNo(message);
+    if (answer !== null) (out as Record<string, unknown>)[current.key] = answer;
   }
   return out;
 }
@@ -148,6 +201,8 @@ export function applySelection(state: ChatState, key: FieldKey, ids: string[]): 
   const found: Extraction = {};
   if (field.kind === "multi") {
     if (valid.length) (found as Record<string, unknown>)[key] = valid;
+  } else if (field.kind === "toggle") {
+    if (valid[0]) (found as Record<string, unknown>)[key] = valid[0] === "yes";
   } else if (key === "count") {
     const size = bucketCount(Number(valid[0]));
     if (size) found.count = size;
@@ -176,13 +231,14 @@ export function applicableFields(state: ChatState): FieldSpec[] {
 }
 
 function isFilled(state: ChatState, field: FieldSpec): boolean {
-  if (field.kind === "text")
-    return state.siteName.trim() !== "" || state.skipped.includes(field.key);
+  if (field.kind === "text") return state.siteName.trim() !== "" || state.skipped.includes(field.key);
+  if (field.kind === "location") return hasLocation(state.answers.location) || state.skipped.includes(field.key);
+  if (field.kind === "toggle") return state.settled.includes(field.key);
   if (field.kind === "multi") {
     const list = state.answers[field.key as (typeof MULTI_KEYS)[number]];
     return list.length > 0 || state.skipped.includes(field.key);
   }
-  return state.answers[field.key as "intent" | "place" | "power" | "link" | "count"] != null;
+  return state.answers[field.key as (typeof SINGLE_KEYS)[number] | "count"] != null;
 }
 
 /** The next unanswered question, or null when the plan can be written. */
@@ -205,7 +261,7 @@ export function summarize(
   for (const field of applicableFields(state)) {
     let value = "";
     if (field.kind === "single") {
-      const id = state.answers[field.key as "intent" | "place" | "power" | "link" | "count"];
+      const id = state.answers[field.key as (typeof SINGLE_KEYS)[number] | "count"];
       if (id != null) value = titleOf(field.key, id);
     } else if (field.kind === "multi") {
       const ids = state.answers[field.key as (typeof MULTI_KEYS)[number]] as string[];
@@ -213,18 +269,22 @@ export function summarize(
         ids.length > 1 && ids.length === field.options.length
           ? `All of them (${ids.length})`
           : ids.map((id) => titleOf(field.key, id)).join(", ");
+    } else if (field.kind === "toggle") {
+      if (field.key === "sharp" && state.answers.sharp) value = "Temperatures swing hard";
+      if (field.key === "gdex" && state.answers.gdex) value = "Archive and publish in GDEX";
+    } else if (field.kind === "location") {
+      value = hasLocation(state.answers.location) ? state.answers.location.label : state.answers.location.label.trim();
     } else {
       value = state.siteName.trim();
     }
     if (value) rows.push({ key: field.key, label: field.label, value });
   }
-  if (state.answers.sharp)
-    rows.push({ key: "measures", label: "Extremes", value: "Temperatures swing hard" });
   return rows;
 }
 
 function merge(state: ChatState, found: Extraction, currentKey: FieldKey | null) {
   const answers: Answers = { ...state.answers };
+  const settled = [...state.settled];
   const understood: FieldKey[] = [];
   for (const key of SINGLE_KEYS) {
     const value = found[key];
@@ -246,9 +306,20 @@ function merge(state: ChatState, found: Extraction, currentKey: FieldKey | null)
     ) as never;
     understood.push(key);
   }
-  if (found.sharp) answers.sharp = true;
-  return { state: { ...state, answers }, understood };
+  for (const key of TOGGLE_KEYS) {
+    const value = found[key];
+    if (value === undefined) continue;
+    // Mentioning extremes while answering something else turns it on; an unprompted "no" is not an answer.
+    if (value === false && currentKey !== key) continue;
+    answers[key] = value;
+    if (!settled.includes(key)) settled.push(key);
+    understood.push(key);
+  }
+  return { state: { ...state, answers, settled }, understood };
 }
+
+/** A message that belongs with a person: the chat hands it to the contact form. */
+export type Handoff = { topic: SupportRead["topic"]; message: string };
 
 export type Turn = {
   state: ChatState;
@@ -259,26 +330,43 @@ export type Turn = {
   usedModel: boolean;
   /** The question now being asked, or null when everything is answered. */
   asking: FieldSpec | null;
+  /** Set when the message was a problem or a request for a person, not an answer. */
+  handoff?: Handoff;
 };
 
 const DONE_TEXT =
   "That is everything I need. Here is what I have. Tell me if anything looks wrong, or press Write my plan.";
 
 function acknowledge(state: ChatState, understood: FieldKey[]): string {
-  const rows = summarize(state).filter(
-    (row) => understood.includes(row.key) && row.label !== "Extremes",
-  );
+  const rows = summarize(state).filter((row) => understood.includes(row.key));
   if (!rows.length) return "";
   return `Got it. ${rows.map((row) => `${row.label}: ${row.value}`).join(". ")}.`;
+}
+
+function handoffTurn(state: ChatState, current: FieldSpec | null, text: string, read: SupportRead, usedModel: boolean): Turn {
+  const back = current ? `\nWhen you are ready, we carry on with the plan:\n${askText(current, state.answers.intent)}` : "";
+  return {
+    state,
+    understood: [],
+    usedModel,
+    asking: current,
+    handoff: { topic: read.topic, message: text.slice(0, 600) },
+    reply: `That sounds like something a person should look at, not the planning chat. You can write to support and a person will answer. Your place in the plan is kept.${back}`,
+  };
 }
 
 export async function handleUserMessage(
   state: ChatState,
   message: string,
   extract?: Extractor,
+  locate?: Locator,
 ): Promise<Turn> {
   const text = message.trim().slice(0, 600);
   const current = nextField(state);
+  const support = readSupport(text);
+
+  // Someone who asks for a person gets one, whatever the question was.
+  if (support.explicit) return handoffTurn(state, current, text, support, false);
 
   // The place's name is free text. No model needed.
   if (current?.key === "siteName") {
@@ -292,6 +380,25 @@ export async function handleUserMessage(
       skip ? "No problem. I will use a generic name." : "",
       false,
     );
+  }
+
+  // Where it is: the survey's own lookup turns it into a point.
+  if (current?.key === "location") {
+    if (isSkip(text)) {
+      return finish({ ...state, skipped: [...state.skipped, "location"] }, [], "No problem. You can set it later in the plan.", false);
+    }
+    const hit = locate ? await locate(text).catch(() => null) : { lat: null, lon: null, label: text.slice(0, 80) };
+    if (!hit) {
+      return {
+        state,
+        understood: [],
+        usedModel: false,
+        asking: current,
+        reply: "I could not find that place. Try a town, a ZIP, a corner, or coordinates like 40.015, -105.27, or say skip.",
+      };
+    }
+    const next: ChatState = { ...state, answers: { ...state.answers, location: hit as Answers["location"] } };
+    return finish(next, ["location"], acknowledge(next, ["location"]), false);
   }
 
   if (current?.skippable && isSkip(text)) {
@@ -312,6 +419,9 @@ export async function handleUserMessage(
       // A model that errors out is treated like no model at all.
     }
   }
+  const modelSaidSupport = found.topic === "support";
+  delete found.topic;
+  found = onlyWhatWasSaid(found, current, text, support.problem);
   // Nothing from the model? Give the plain keyword match one chance at the current question.
   if (Object.keys(found).length === 0) found = keywordExtraction(current, text);
 
@@ -319,13 +429,15 @@ export async function handleUserMessage(
 
   const merged = merge(state, found, current?.key ?? null);
   if (merged.understood.length === 0) {
+    // Not an answer. If it reads like a problem or a question for a person, hand it over.
+    if (modelSaidSupport || support.problem) return handoffTurn(state, current, text, support, usedModel);
     return {
       state,
       understood: [],
       usedModel,
       asking: current,
       reply: current
-        ? `I was not sure how to match that. ${current.question} You can also tap one of the choices below.`
+        ? `I was not sure how to match that. ${askText(current, state.answers.intent)}\nYou can also tap one of the choices below.`
         : "I did not catch a change there. Press Write my plan when you are ready.",
     };
   }
@@ -339,8 +451,8 @@ export async function handleUserMessage(
 
 function finish(state: ChatState, understood: FieldKey[], lead: string, usedModel: boolean): Turn {
   const asking = nextField(state);
-  const tail = asking ? asking.question : DONE_TEXT;
-  return { state, understood, usedModel, asking, reply: [lead, tail].filter(Boolean).join(" ") };
+  const tail = asking ? askText(asking, state.answers.intent) : DONE_TEXT;
+  return { state, understood, usedModel, asking, reply: [lead, tail].filter(Boolean).join("\n") };
 }
 
 /** The first message of a new conversation. */
@@ -352,7 +464,7 @@ export function openingTurn(): Turn {
     usedModel: false,
     asking,
     reply:
-      "Hi! I will ask a few short questions about your station, then write a draft plan. Answer in your own words. " +
-      (asking?.question ?? ""),
+      "Hi! Let's plan your station together.\n" +
+      (asking ? askText(asking, null) : ""),
   };
 }

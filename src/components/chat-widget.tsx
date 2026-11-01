@@ -1,8 +1,9 @@
-import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Maximize2, MessageCircle, Minimize2, RotateCcw, Send, X } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { LifeBuoy, Maximize2, MessageCircle, Minimize2, RotateCcw, Send, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import chatAvatar from "@/assets/chat-avatar.png";
+import { chatInterpret, chatLlmStatus } from "@/lib/chat/api";
 import { CHAT_CONFIG } from "@/lib/chat/config";
 import {
   allIds,
@@ -12,9 +13,14 @@ import {
   openingTurn,
   summarize,
   type ChatState,
+  type Extractor,
+  type Handoff,
 } from "@/lib/chat/engine";
 import { createExtractor, probe, type ChatConfig } from "@/lib/chat/llm";
 import type { FieldSpec } from "@/lib/chat/spec";
+import { geocode } from "@/lib/place/geocode";
+import { supportInfo } from "@/lib/support/api";
+import { SUPPORT_PATH, supportMailto } from "@/lib/support/info";
 import { useDraft } from "@/lib/wizard/store";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +29,6 @@ type Status = "checking" | "model" | "simple";
 
 export function ChatWidget() {
   const navigate = useNavigate();
-  const path = useRouterState({ select: (state) => state.location.pathname });
   const hasDraft = useDraft((state) => state.hydrated && Boolean(state.answers.intent));
 
   const [open, setOpen] = useState(false);
@@ -36,11 +41,16 @@ export function ChatWidget() {
   const [picked, setPicked] = useState<string[]>([]);
   const [typedId, setTypedId] = useState<number | null>(null);
   // Basic (keyword) matching unless the site was built with a model server to talk to.
-  const [status, setStatus] = useState<Status>(CHAT_CONFIG ? "checking" : "simple");
+  const [status, setStatus] = useState<Status>("checking");
   const [expanded, setExpanded] = useState(false);
   // True while the window plays its closing animation, just before it is removed.
   const [closing, setClosing] = useState(false);
-  const modelDown = useRef(!CHAT_CONFIG);
+  // Set when a message was a problem or a request for a person, not an answer.
+  const [handoff, setHandoff] = useState<Handoff | null>(null);
+  const [supportEmail, setSupportEmail] = useState<string | null>(null);
+  const modelDown = useRef(true);
+  // True when the server has a language model for us (its key never reaches this page).
+  const serverModel = useRef(false);
   const nextId = useRef(1);
   const scroller = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +77,7 @@ export function ChatWidget() {
     setChat(turn.state);
     setAsking(turn.asking);
     setTypedId(null);
+    setHandoff(null);
     setMessages([{ id: nextId.current++, role: "bot", text: turn.reply }]);
   }, []);
 
@@ -74,7 +85,24 @@ export function ChatWidget() {
   useEffect(() => {
     if (!open || messages.length > 0) return;
     start();
-    if (CHAT_CONFIG) void checkModel(CHAT_CONFIG);
+    // A language model on the server reads free-text answers; failing that, one the site was built to talk to;
+    // failing that, keyword matching.
+    const fallback = () => {
+      if (CHAT_CONFIG) void checkModel(CHAT_CONFIG);
+      else setStatus("simple");
+    };
+    void chatLlmStatus()
+      .then((r) => {
+        if (r.enabled) {
+          serverModel.current = true;
+          modelDown.current = false;
+          setStatus("model");
+        } else fallback();
+      })
+      .catch(fallback);
+    void supportInfo()
+      .then((r) => setSupportEmail(r.email))
+      .catch(() => undefined);
   }, [open, messages.length, start, checkModel]);
 
   useEffect(() => {
@@ -117,7 +145,7 @@ export function ChatWidget() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, expanded, requestClose]);
 
-  const extractor = useMemo(
+  const clientExtractor = useMemo(
     () =>
       CHAT_CONFIG
         ? createExtractor(CHAT_CONFIG, () => {
@@ -127,6 +155,22 @@ export function ChatWidget() {
         : undefined,
     [],
   );
+  const serverExtractor = useCallback<Extractor>(async ({ current, message }) => {
+    try {
+      const r = await chatInterpret({ data: { field: current?.key ?? null, message } });
+      if (r.raw === null) {
+        // "off": the server has no model after all. Anything else is a hiccup; keywords cover this message.
+        if (r.reason === "off") {
+          modelDown.current = true;
+          setStatus("simple");
+        }
+        return null;
+      }
+      return JSON.parse(r.raw) as unknown;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const askingKey = asking?.key ?? null;
   useEffect(() => {
@@ -142,10 +186,24 @@ export function ChatWidget() {
     setInput("");
     push("user", text);
     setBusy(true);
-    const turn = await handleUserMessage(chat, text, modelDown.current ? undefined : extractor);
+    setHandoff(null);
+    const reader = modelDown.current ? undefined : serverModel.current ? serverExtractor : clientExtractor;
+    const turn = await handleUserMessage(chat, text, reader, (place) => geocode(place));
     setChat(turn.state);
     setAsking(turn.asking);
+    setHandoff(turn.handoff ?? null);
     setBusy(false);
+    push("bot", turn.reply);
+  }
+
+  /** One tapped choice. It is already one of the survey's own answers, so no model is asked. */
+  function choose(option: { id: string | number; title: string }) {
+    if (!asking || busy) return;
+    push("user", option.title);
+    setHandoff(null);
+    const turn = applySelection(chat, asking.key, [String(option.id)]);
+    setChat(turn.state);
+    setAsking(turn.asking);
     push("bot", turn.reply);
   }
 
@@ -186,8 +244,7 @@ export function ChatWidget() {
 
   const rows = summarize(chat);
   const done = asking === null && messages.length > 0;
-  // The wizard's sticky Continue bar sits at the bottom of small screens; stay above it there.
-  const lift = path === "/wizard" ? "bottom-20 sm:bottom-5" : "bottom-5";
+  const lift = "bottom-5";
 
   if (!open) {
     return (
@@ -315,13 +372,48 @@ export function ChatWidget() {
             </div>
           ) : null}
 
+          {!busy && typingDone && handoff ? (
+            <div className="rounded-lg border border-line bg-brand-soft p-3 text-sm">
+              <p className="font-medium">Write to support</p>
+              <p className="mt-1 text-xs text-muted">A person reads these. What you wrote goes into the form, so you do not retype it.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const h = handoff;
+                    requestClose();
+                    void navigate({ to: SUPPORT_PATH, search: { topic: h.topic, message: h.message, from: "planning chat" } });
+                  }}
+                  className="min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-surface transition hover:bg-brand-deep"
+                >
+                  Open the contact form
+                </button>
+                {supportEmail ? (
+                  <a
+                    href={supportMailto(supportEmail, "OpenIoTwx planning chat")}
+                    className="inline-flex min-h-10 items-center rounded-md border border-line bg-surface px-4 text-sm transition-colors hover:border-brand hover:bg-brand-soft"
+                  >
+                    Email {supportEmail}
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setHandoff(null)}
+                  className="min-h-10 rounded-md px-3 text-sm text-muted transition-colors hover:text-ink"
+                >
+                  Keep planning
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           {!busy && typingDone && asking && asking.options.length > 0 ? (
             asking.kind === "multi" ? (
               <div role="group" aria-label="Pick all that apply">
                 <p className="mb-2 text-xs text-muted">
                   Tap every one that applies, or type it, like “all of them except rain”.
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid gap-2">
                   <button
                     type="button"
                     aria-pressed={picked.length === asking.options.length}
@@ -329,7 +421,7 @@ export function ChatWidget() {
                       setPicked(picked.length === asking.options.length ? [] : allIds(asking.key))
                     }
                     className={cn(
-                      "rounded-md border px-3 py-1.5 text-xs font-medium",
+                      "rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors",
                       picked.length === asking.options.length
                         ? "border-brand bg-brand text-surface"
                         : "border-brand text-brand-deep hover:bg-brand-soft",
@@ -344,20 +436,20 @@ export function ChatWidget() {
                       <button
                         key={id}
                         type="button"
-                        title={option.hint}
                         aria-pressed={on}
                         onClick={() =>
                           setPicked(on ? picked.filter((item) => item !== id) : [...picked, id])
                         }
                         className={cn(
-                          "rounded-md border px-3 py-1.5 text-left text-xs",
-                          on
-                            ? "border-brand bg-brand-soft text-ink"
-                            : "border-line bg-surface hover:border-brand",
+                          "rounded-md border px-3 py-2 text-left transition-colors",
+                          on ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-brand hover:bg-brand-soft",
                         )}
                       >
-                        {on ? "✓ " : ""}
-                        {option.title}
+                        <span className="block text-sm font-medium text-ink">
+                          {on ? "✓ " : ""}
+                          {option.title}
+                        </span>
+                        {option.hint ? <span className="mt-0.5 block text-xs text-muted">{option.hint}</span> : null}
                       </button>
                     );
                   })}
@@ -367,7 +459,7 @@ export function ChatWidget() {
                     type="button"
                     disabled={picked.length === 0}
                     onClick={sendPicked}
-                    className="min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-surface hover:bg-brand-deep disabled:opacity-40"
+                    className="min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-surface transition hover:bg-brand-deep disabled:opacity-40 disabled:hover:bg-brand"
                   >
                     {picked.length === 0 ? "Send selection" : `Send ${picked.length} selected`}
                   </button>
@@ -375,24 +467,37 @@ export function ChatWidget() {
                     <button
                       type="button"
                       onClick={() => void send("skip")}
-                      className="min-h-10 rounded-md px-3 text-sm text-muted hover:text-ink"
+                      className="min-h-10 rounded-md px-3 text-sm text-muted transition-colors hover:text-ink"
                     >
                       Skip
                     </button>
                   ) : null}
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Quick answers">
+            ) : asking.kind === "toggle" ? (
+              <div className="flex gap-2" role="group" aria-label="Quick answers">
                 {asking.options.map((option) => (
                   <button
                     key={String(option.id)}
                     type="button"
-                    title={option.hint}
-                    onClick={() => void send(option.title)}
-                    className="rounded-md border border-line bg-surface px-3 py-1.5 text-left text-xs hover:border-brand hover:bg-brand-soft"
+                    onClick={() => choose(option)}
+                    className="min-h-10 min-w-20 rounded-md border border-line bg-surface px-4 text-sm transition-colors hover:border-brand hover:bg-brand-soft"
                   >
                     {option.title}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-2" role="group" aria-label="Quick answers">
+                {asking.options.map((option) => (
+                  <button
+                    key={String(option.id)}
+                    type="button"
+                    onClick={() => choose(option)}
+                    className="rounded-md border border-line bg-surface px-3 py-2 text-left transition-colors hover:border-brand hover:bg-brand-soft"
+                  >
+                    <span className="block text-sm font-medium text-ink">{option.title}</span>
+                    {option.hint ? <span className="mt-0.5 block text-xs text-muted">{option.hint}</span> : null}
                   </button>
                 ))}
               </div>
@@ -424,6 +529,13 @@ export function ChatWidget() {
           <Send className="size-4" aria-hidden="true" />
         </button>
       </form>
+      <p className="border-t border-line bg-surface px-3 py-2 text-center text-xs text-muted">
+        <LifeBuoy className="mr-1 inline size-3.5 align-[-2px]" aria-hidden="true" />
+        Something else on your mind?{" "}
+        <Link to={SUPPORT_PATH} onClick={requestClose} className="underline underline-offset-4 transition-colors hover:text-ink">
+          Contact support
+        </Link>
+      </p>
     </section>
   );
 }
@@ -476,7 +588,7 @@ function Bubble({
   return (
     <div className="flex items-end gap-2">
       <Avatar status={status} />
-      <div className="w-fit max-w-[calc(100%-3.5rem)] rounded-lg rounded-bl-sm bg-surface-2 px-3 py-2 text-sm text-ink group-data-[expanded=true]/chat:text-base">
+      <div className="w-fit max-w-[calc(100%-3.5rem)] whitespace-pre-line rounded-lg rounded-bl-sm bg-surface-2 px-3 py-2 text-sm text-ink group-data-[expanded=true]/chat:text-base">
         {animate ? <Typed text={message.text} onDone={onDone} /> : message.text}
       </div>
     </div>

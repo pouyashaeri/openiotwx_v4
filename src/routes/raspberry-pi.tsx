@@ -31,7 +31,7 @@ import { useDraft } from "@/lib/wizard/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/raspberry-pi")({
-  head: () => ({ meta: [{ title: "Raspberry Pi gateway — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Raspberry Pi gateway | OpenIoTwx" }] }),
   component: PiPage,
 });
 
@@ -328,7 +328,7 @@ function Guide({ stations }: { stations: number }) {
             Fix the highlighted boxes. Until then the commands below use the standard values, so nothing unsafe is shown.
           </p>
         ) : null}
-        <button type="button" className="mt-3 text-sm text-kelp underline underline-offset-4" onClick={() => setInput(DEFAULTS)}>
+        <button type="button" className="mt-3 text-sm text-kelp underline underline-offset-4 transition-colors duration-150 hover:text-kelp-deep" onClick={() => setInput(DEFAULTS)}>
           Reset to NCAR's defaults
         </button>
       </section>
@@ -380,7 +380,7 @@ function Guide({ stations }: { stations: number }) {
       </section>
 
       <div className="mt-8 flex justify-end">
-        <Link to="/deploy" search={{ station: undefined }} className="inline-flex min-h-11 items-center rounded-full bg-kelp px-5 text-sm font-medium text-paper">
+        <Link to="/deploy" search={{ station: undefined }} className="inline-flex min-h-11 items-center rounded-full bg-kelp px-5 text-sm font-medium text-paper transition-[filter] duration-150 not-disabled:hover:brightness-110">
           Next: Deploy and Publish
         </Link>
       </div>

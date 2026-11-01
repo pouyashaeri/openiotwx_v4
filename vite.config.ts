@@ -6,6 +6,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
+import { devDataDir } from "./scripts/dev-data.mjs";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
 
 /** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
@@ -31,6 +32,9 @@ function pgliteBootstrapPlugin(): Plugin {
     name: "app-builder:pglite-bootstrap",
     apply: "serve",
     async configureServer(server) {
+      // Keep the embedded database on disk on the normal dev port, so restarts do not wipe your stations.
+      const dir = devDataDir({ port: server.config.server.port, env: process.env, root: server.config.root });
+      if (dir) process.env.PGLITE_DIR = dir;
       if (!hasGlobbedMigrations(server.config.root)) return;
       try {
         const mod = (await server.ssrLoadModule("/src/lib/db.ts")) as {

@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { authClient } from "@/lib/auth/client";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Sign in — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Sign in | OpenIoTwx" }] }),
   validateSearch: (s: Record<string, unknown>) => ({
     // Same-site paths only: "//host" and "/\\host" would be read by browsers as another site.
     next: typeof s.next === "string" && /^\/(?![\\/])/.test(s.next) ? s.next : "/account",
@@ -100,7 +100,7 @@ function Login() {
       </form>
       <button
         type="button"
-        className="mt-4 text-left text-sm text-kelp underline underline-offset-4"
+        className="mt-4 text-left text-sm text-kelp underline underline-offset-4 transition-colors duration-150 hover:text-kelp-deep"
         onClick={() => {
           setMode(mode === "in" ? "up" : "in");
           setError(null);

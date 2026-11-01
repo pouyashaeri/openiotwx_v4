@@ -39,6 +39,11 @@ const SINGLE: Partial<Record<FieldKey, Array<[string, RegExp]>>> = {
     ["solar", /\b(solar|panel|battery|no outlet|no power|off.?grid|sun powered)\b/i],
     ["outlet", /\b(outlet|plug|mains|wall|socket|electric\w*|grid power|usb)\b/i],
   ],
+  sharing: [
+    ["local", /\b(own server|our server|private|just us|ourselves|keep (it|them|the readings|readings)|stay(s)? (here|local|with us)|nothing (leaves|is shared)|local)\b/i],
+    ["open", /\b(open( data)?|public(ly)?|publish\w*|cite|archiv\w*|anyone|everyone|the world|gdex)\b/i],
+    ["community", /\b(communit\w*|share\w*|map|neighbou?rs?|compare|nearby)\b/i],
+  ],
   link: [
     [
       "lora",
@@ -92,6 +97,14 @@ const MULTI: Partial<Record<FieldKey, Array<[string, RegExp]>>> = {
     ["backup", /\b(backup|back.?up|spare|second (site|station)|fallback)\b/i],
     ["practice", /\b(practi[cs]e\w*|rehears\w*|try (it|the plan)|dry run|drill)\b/i],
   ],
+  resources: [
+    ["printer", /\b(3d ?printers?|printers?|filament|makerspace|maker space)\b/i],
+    ["parts", /\b(spare|parts?|boards?|sensors?|left ?overs?|housings?)\b/i],
+    ["hands", /\b(volunteers?|build day|saturday|friends|helpers?|a team|people to (help|build))\b/i],
+    ["compute", /\b(computer|laptop|desktop|idle|stays? on|compute|\bpc\b)\b/i],
+    ["host", /\b(raspberry pi|\bpi\b|server|host|old pc|cloud|aws|vps|nas)\b/i],
+    ["funds", /\b(budget|money|funds?|grant|pta|funding|donation|cash)\b/i],
+  ],
   gaps: [
     ["nomeasure", /\b(no (local )?(measurements?|data|readings)|nothing measured|no station)\b/i],
     ["control", /\b(not ours|someone else|can'?t (use|access|reuse)|don'?t own|locked)\b/i],
@@ -138,14 +151,32 @@ export function matchCount(text: string): 1 | 3 | 6 | null {
   return n <= 4 ? 3 : 6;
 }
 
+/**
+ * A pattern matches the person's words, except for a thing that is only mentioned as missing ("no outlet",
+ * "without wifi", "far from power"). A pattern that spells out its own "no ..." wording (solar's "no outlet",
+ * the connection question's "no signal") is tried on the words as written, since that is an answer.
+ */
+const MISSING = /\b(no|not|without|zero|lacking|far from|nowhere near|don'?t have|do not have|doesn'?t have)\s+(an?\s+|any\s+|the\s+)?[a-z-]+/gi;
+
+function matches(pattern: RegExp, text: string): boolean {
+  return pattern.test(/\bno\b/.test(pattern.source) ? text : text.replace(MISSING, " "));
+}
+
+/** Is this choice named in the words only as something missing? A model's pick of it should be dropped. */
+export function onlyMissing(field: FieldKey, id: string, text: string): boolean {
+  const pattern = [...(SINGLE[field] ?? []), ...(MULTI[field] ?? [])].find(([key]) => key === id)?.[1];
+  if (!pattern) return false;
+  return pattern.test(text) && !matches(pattern, text);
+}
+
 export function matchSingle(field: FieldKey, text: string): string | number | null {
   if (field === "count") return matchCount(text);
-  for (const [id, pattern] of SINGLE[field] ?? []) if (pattern.test(text)) return id;
+  for (const [id, pattern] of SINGLE[field] ?? []) if (matches(pattern, text)) return id;
   return null;
 }
 
 export function matchMulti(field: FieldKey, text: string): string[] {
-  return (MULTI[field] ?? []).filter(([, pattern]) => pattern.test(text)).map(([id]) => id);
+  return (MULTI[field] ?? []).filter(([, pattern]) => matches(pattern, text)).map(([id]) => id);
 }
 
 // ---- "all of them" and "all of them except ..." --------------------------------------------
@@ -213,4 +244,51 @@ export function isSkip(text: string): boolean {
 /** Extreme-temperature wording on the measuring question. */
 export function mentionsExtremes(text: string): boolean {
   return /\b(extreme|swing\w*|very (hot|cold)|freez\w*|below zero|scorching|brutal)\b/i.test(text);
+}
+
+/**
+ * A yes or no, for the survey's two on/off questions. Null when the message says neither.
+ * "No" wins when it leads the message ("no, we are fine"); otherwise a plain yes is read first.
+ */
+export function matchYesNo(text: string): boolean | null {
+  if (/^\s*(no|nope|nah|not really|no thanks|negative)\b/i.test(text)) return false;
+  if (/\b(yes|yeah|yep|yup|sure|please|definitely|absolutely|correct|true|ok(ay)?|do it|turn it on|opt in|we do|i do|go ahead|swing\w*|extreme\w*)\b/i.test(text)) return true;
+  if (/\b(no|nope|nah|don'?t|do not|never|off|opt out|pass|skip|not (now|needed|really))\b/i.test(text)) return false;
+  return null;
+}
+
+// ---- messages that are not an answer: a problem, or a wish to talk to a person -------------
+
+/** The person plainly asks for a human or for support. This is acted on even if an answer was also found. */
+const ASKS_FOR_PERSON =
+  /\b(contact (support|you|us|someone|a person|the team)|talk to (a )?(real )?(person|human|someone|somebody)|speak (to|with) (a )?(real )?(person|human|someone)|real person|customer (service|support)|support (team|email|address)|email (you|support|someone|the team)|get (in touch|hold of) (with )?(you|someone|support))\b|^\s*(support|help me|human|agent)\s*[.!?]*\s*$/i;
+
+/** Words that mean something is wrong or being asked, which a person should look at. */
+const PROBLEM =
+  /\b(bug|broken|break(s|ing)?|error|crash(ed|es|ing)?|not working|doesn'?t work|isn'?t working|won'?t (work|load|flash|connect|upload|start|boot|sign|log|save)|can'?t (log ?in|sign ?in|flash|connect|upload|access|register|save|find|see|get|open|load)|cannot (log ?in|sign ?in|flash|connect|upload|access|register|save)|forgot (my )?password|reset (my )?password|delete (my )?(account|data|station)|refund|complain\w*|problem (with|when)|issue (with|when)|trouble (with|logging|flashing|connecting)|stuck|fail(s|ed|ing|ure)?|nothing happens|not (showing|loading|appearing)|doesn'?t (show|load|appear))\b/i;
+
+export type SupportRead = {
+  /** The person asked for a human, so hand off even if an answer was found. */
+  explicit: boolean;
+  /** It reads like a problem or a question that is not an answer, so hand off if nothing matched. */
+  problem: boolean;
+  /** Which contact-form topic fits best. */
+  topic: "planning" | "station" | "data" | "account" | "other";
+};
+
+/** Reads one message for a request that belongs with a person, not in the planning chat. */
+export function readSupport(text: string): SupportRead {
+  const explicit = ASKS_FOR_PERSON.test(text);
+  const words = text.trim().split(/\s+/).length;
+  const problem = PROBLEM.test(text) || (/\?/.test(text) && words >= 4);
+  const topic = /\b(log ?in|sign ?in|password|account|email address|delete my)\b/i.test(text)
+    ? "account"
+    : /\b(flash\w*|firmware|board|sensor|station|upload|wi-?fi|device|esp32|rp2040|usb|serial|battery|solar)\b/i.test(text)
+      ? "station"
+      : /\b(gdex|data|csv|api|map|readings?|netcdf|download|export|chords)\b/i.test(text)
+        ? "data"
+        : /\b(wizard|plan|planning|survey|question|answer|draft)\b/i.test(text)
+          ? "planning"
+          : "other";
+  return { explicit, problem, topic };
 }

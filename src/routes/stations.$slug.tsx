@@ -8,9 +8,10 @@ import { ago, useAsync } from "@/lib/platform/hooks";
 import { metricInfo, RANGES, type Range } from "@/lib/platform/metrics";
 import { cn } from "@/lib/utils";
 import { confirmDialog } from "@/components/confirm-dialog";
+import { GdexPanel } from "@/components/gdex-panel";
 
 export const Route = createFileRoute("/stations/$slug")({
-  head: () => ({ meta: [{ title: "Station — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Station | OpenIoTwx" }] }),
   component: StationPage,
 });
 
@@ -178,6 +179,7 @@ function StationPage() {
           ) : (
           <NcarPanel station={station} onChange={(on) => act(() => editStation({ data: { id: station.id, ncarNetwork: on } }), on ? "Joined the NCAR network" : "Left the NCAR network")} />
           )}
+          {station.source === "device" ? <GdexPanel stationId={station.id} /> : null}
           {station.source === "device" ? <ParamsEditor station={station} onSaved={() => void view.reload()} /> : null}
           <div className="mt-4 flex flex-wrap gap-2">
             {station.source !== "chords" || station.is_public ? (
@@ -262,7 +264,7 @@ function Downloads({ station, hours }: { station: StationData; hours: number }) 
           <input type="datetime-local" value={custom.end} onChange={(e) => setCustom({ ...custom, end: e.target.value })} className="min-h-9 rounded-lg border border-line bg-paper px-2 text-ink" />
         </label>
         {custom.start ? (
-          <button type="button" className="text-kelp underline underline-offset-4" onClick={() => setCustom({ start: "", end: "" })}>
+          <button type="button" className="text-kelp underline underline-offset-4 transition-colors duration-150 hover:text-kelp-deep" onClick={() => setCustom({ start: "", end: "" })}>
             Use the shown range
           </button>
         ) : null}
@@ -283,7 +285,7 @@ function ParamsEditor({ station, onSaved }: { station: StationData; onSaved: () 
   useEffect(load, []);
   return (
     <details className="mt-5 rounded-xl border border-line bg-paper p-4">
-      <summary className="cursor-pointer text-sm font-medium">
+      <summary className="cursor-pointer text-sm font-medium transition-colors duration-150 hover:text-kelp">
         Variables this station reports ({station.expected_metrics.length})
       </summary>
       <p className="mt-2 text-sm text-muted">
@@ -329,7 +331,7 @@ function LocationEditor({ station, onSaved }: { station: StationData; onSaved: (
   const input = "min-h-10 w-full rounded-lg border border-line bg-paper px-3 text-sm";
   return (
     <details className="mt-5 rounded-xl border border-line bg-paper p-4" open={station.latitude == null}>
-      <summary className="cursor-pointer text-sm font-medium">
+      <summary className="cursor-pointer text-sm font-medium transition-colors duration-150 hover:text-kelp">
         Location {station.latitude != null && station.longitude != null ? `(${station.latitude.toFixed(3)}, ${station.longitude.toFixed(3)})` : "(not set)"}
       </summary>
       <p className="mt-2 text-sm text-muted">

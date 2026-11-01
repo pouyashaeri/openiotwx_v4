@@ -4,7 +4,7 @@ import { publicStations } from "@/lib/platform/api";
 import { useAsync } from "@/lib/platform/hooks";
 
 export const Route = createFileRoute("/stations/")({
-  head: () => ({ meta: [{ title: "Stations — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Stations | OpenIoTwx" }] }),
   component: Stations,
 });
 

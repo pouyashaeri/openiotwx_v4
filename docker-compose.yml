@@ -59,6 +59,18 @@ services:
       CIRRUS_ENABLED: ${CIRRUS_ENABLED:-0}
       EJAM_URL: ${EJAM_URL:-https://api.ejanalysis.com}
       INGEST_BRIDGE_TOKEN: ${INGEST_BRIDGE_TOKEN:-}
+      GDEX_RELEASE_TOKEN: ${GDEX_RELEASE_TOKEN:-}
+      GDEX_CONTACT_EMAIL: ${GDEX_CONTACT_EMAIL:-}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      SMTP_URL: ${SMTP_URL:-}
+      SUPPORT_FROM: ${SUPPORT_FROM:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
+      CHAT_LLM_ENDPOINT: ${CHAT_LLM_ENDPOINT:-}
+      CHAT_LLM_KEY: ${CHAT_LLM_KEY:-}
+      CHAT_LLM_MODEL: ${CHAT_LLM_MODEL:-}
+      CHAT_LLM_PER_10MIN: ${CHAT_LLM_PER_10MIN:-30}
+      CHAT_LLM_DAILY_CAP: ${CHAT_LLM_DAILY_CAP:-3000}
       INGEST_MAX_BUFFER: ${INGEST_MAX_BUFFER:-100000}
       PG_POOL_MAX: ${PG_POOL_MAX:-20}
     depends_on:
@@ -108,6 +120,21 @@ services:
       INGEST_BRIDGE_TOKEN: ${INGEST_BRIDGE_TOKEN:?set INGEST_BRIDGE_TOKEN in .env to use MQTT}
     depends_on:
       - mosquitto
+      - proxy
+
+  # ── optional: GDEX releases ────────────────────────────────────────────────
+  # Builds the DRAFT release when a month or quarter ends. A person still reads the quality report and
+  # marks it ready in the admin console (GDEX tab) before GDEX can pull it.
+  gdex-scheduler:
+    profiles: ["gdex"]
+    image: openiotwx-app
+    restart: unless-stopped
+    command: ["node", "scripts/gdex-release.mjs"]
+    environment:
+      APP_URL: http://proxy
+      GDEX_RELEASE_TOKEN: ${GDEX_RELEASE_TOKEN:?set GDEX_RELEASE_TOKEN in .env to use the GDEX scheduler}
+      GDEX_CHECK_HOURS: ${GDEX_CHECK_HOURS:-12}
+    depends_on:
       - proxy
 
 volumes:

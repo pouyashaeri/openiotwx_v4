@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { LinkMarquee } from "@/components/link-marquee";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { ChoiceCard } from "@/components/choice-card";
-import { DOCS, INTENTS } from "@/lib/wizard/catalog";
+import { INTENTS } from "@/lib/wizard/catalog";
 import { PURPOSES } from "@/lib/wizard/purpose";
 import { useDraft } from "@/lib/wizard/store";
 import type { Intent } from "@/lib/wizard/types";
@@ -82,44 +83,18 @@ function Home() {
       </section>
 
       <section id="downloads" className="scroll-mt-16 border-b border-line bg-surface-2">
-        <div className="mx-auto max-w-5xl px-4 py-8">
-          <h2 className="text-2xl">The pages to use, and the files to build from</h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
-            Plan the station, then open the record, the forecast, and the print collective. The
-            zips are the current NCAR main branch: every housing STL, and the Atom Lite source.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <PageLink to="/wizard" label="Wizard" />
-            <PageLink to="/plan" label="Plan" />
-            <PageLink to="/analysis" label="Analysis" />
-            <PageLink to="/forecast" label="Forecast" />
-            <PageLink to="/community" label="Community" />
-            <PageLink to="/library" label="Library" />
+        <LinkMarquee>
+          <div className="mx-auto max-w-5xl px-4 pb-8 pt-1">
+            <h2 className="text-2xl">The pages to use, and the files to build from</h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted">
+              Plan the station, then open the record, the forecast, and the print collective. The
+              zips are the current NCAR main branch: every housing STL, and the Atom Lite source.
+            </p>
           </div>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <a
-              href={DOCS.stlZip}
-              className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-5 text-sm font-medium text-white hover:bg-brand-deep"
-            >
-              Download STL zip
-            </a>
-            <a
-              href={DOCS.firmwareZip}
-              className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-5 text-sm hover:border-brand"
-            >
-              Download Atom Lite source
-            </a>
-            <a
-              href={DOCS.print}
-              className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-5 font-mono text-sm text-brand hover:border-brand"
-            >
-              one-file STLs ↗
-            </a>
-          </div>
-        </div>
+        </LinkMarquee>
       </section>
 
-      <div id="start" className="mx-auto max-w-5xl -scroll-mt-8 px-4 py-10 sm:-scroll-mt-14 sm:py-14">
+      <div id="start" className="mx-auto max-w-5xl -scroll-mt-3 px-4 py-10 sm:-scroll-mt-7 sm:py-14">
         {hydrated && intent && !started ? (
           <div className="no-print mb-8 flex flex-col gap-3 rounded-lg border border-line bg-brand-soft px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             {confirmDiscard ? (
@@ -142,7 +117,7 @@ function Home() {
                   </button>
                   <button
                     type="button"
-                    className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm"
+                    className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep"
                     onClick={() => setConfirmDiscard(false)}
                   >
                     Keep it
@@ -257,23 +232,40 @@ function Home() {
           <p className="eyebrow">06 / after the plan</p>
           <h2 className="mt-2 text-2xl">Where the draft goes next</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <Link to="/analysis" className="rounded-lg border border-line bg-white px-4 py-4">
+            <Link to="/analysis" className="rounded-lg border border-line bg-white px-4 py-4 transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep">
               <span className="font-mono text-xs text-brand">Analysis</span>
               <span className="mt-1 block text-sm text-muted">
                 Station record, vulnerability index, and the choice to archive in GDEX.
               </span>
             </Link>
-            <Link to="/forecast" className="rounded-lg border border-line bg-white px-4 py-4">
+            <Link to="/forecast" className="rounded-lg border border-line bg-white px-4 py-4 transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep">
               <span className="font-mono text-xs text-brand">Forecast</span>
               <span className="mt-1 block text-sm text-muted">
                 History, now, and the next day. CREDIT on this browser, BOINC, or CIRRUS.
               </span>
             </Link>
-            <Link to="/community" className="rounded-lg border border-line bg-white px-4 py-4">
+            <Link to="/community" className="rounded-lg border border-line bg-white px-4 py-4 transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep">
               <span className="font-mono text-xs text-brand">Community</span>
               <span className="mt-1 block text-sm text-muted">
                 The build collective: print queue, shared printers, and spare parts.
               </span>
+            </Link>
+          </div>
+        </section>
+
+        <section className="mt-14" aria-labelledby="gdex-band">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-2xl">
+              <h2 id="gdex-band" className="text-2xl">
+                Readings that outlast the project
+              </h2>
+              <p className="mt-2 text-sm text-muted">
+                Stations built here can join the NCAR research network and, with their steward&apos;s consent, have their data released to GDEX, the NSF NCAR archive: CF-compliant
+                NetCDF with coordinates, units and metadata, and a DOI so others can cite it.
+              </p>
+            </div>
+            <Link to="/gdex" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-line bg-white px-5 text-sm font-medium hover:border-brand">
+              How data reaches GDEX
             </Link>
           </div>
         </section>
@@ -308,19 +300,3 @@ function Note({ kicker, title, body }: { kicker: string; title: string; body: st
   );
 }
 
-function PageLink({
-  to,
-  label,
-}: {
-  to: "/wizard" | "/plan" | "/analysis" | "/forecast" | "/community" | "/library";
-  label: string;
-}) {
-  return (
-    <Link
-      to={to}
-      className="inline-flex min-h-11 items-center rounded-md border border-line bg-white px-3 text-sm hover:border-brand"
-    >
-      {label}
-    </Link>
-  );
-}

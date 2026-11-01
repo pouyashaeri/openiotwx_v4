@@ -131,8 +131,12 @@ try {
   await dialog.getByRole("button", { name: "Start the chat over" }).click();
   await dialog.getByRole("button", { name: "Write my plan" }).waitFor({ state: "hidden" });
   ok("starting over clears it");
-  for (let i = 0; i < 24; i += 1) {
-    if ((await answerOne(dialog, "Chat Test Site")) === "done") break;
+  // The name is typed; the location question after it is skipped (a made-up place cannot be found).
+  let typed = 0;
+  for (let i = 0; i < 40; i += 1) {
+    const how = await answerOne(dialog, typed === 0 ? "Chat Test Site" : "skip");
+    if (how === "done") break;
+    if (how === "text") typed += 1;
     await sleep(300);
   }
   await dialog.getByRole("button", { name: "Write my plan" }).click();

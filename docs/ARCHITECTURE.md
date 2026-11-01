@@ -105,6 +105,7 @@ v3 shipped as a website plus a separate community server (FastAPI, its own datab
 | Print queue | `collective_inventory` (rows belong to the account that saved them) | everyone | signed-in people, their own rows |
 | Offers board | `collective_members` | everyone, **without contact details** | signed-in people |
 | Sharing decisions | `data_consent` (the record behind the GDEX switch) | you, and staff | signed-in people |
+| GDEX consent and releases | `stations.gdex_*`, `gdex_consent_log`, `gdex_releases`, `gdex_release_files` (see [GDEX.md](GDEX.md)) | consent: the station's owner and staff; ready releases: public, drafts: staff | the owner (consent), staff (releases) |
 
 The hub never runs a model. A forecast request waits in the queue until a runner picks it up. The runner is v3's `credit_runner` from `infra/`: give it `API_URL=https://<site>/hub` and the same `HUB_TOKEN` as the site and it works the queue (`/compute/status` shows whether one has reported in the last six hours). The place loader attaches the same way. v3's Metabase and MQTT listener expect v3's own tables, so they stay with the standalone stack. If you would rather use the whole standalone stack, point the pages at it under "Where the page looks for your services".
 

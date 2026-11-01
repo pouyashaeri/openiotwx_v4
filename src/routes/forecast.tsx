@@ -17,7 +17,7 @@ import { hasLocation, type SurpriseId } from "@/lib/wizard/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/forecast")({
-  head: () => ({ meta: [{ title: "Forecast — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Forecast | OpenIoTwx" }] }),
   component: ForecastPage,
 });
 
@@ -144,7 +144,7 @@ function ForecastPage() {
                 onClick={() => setBackend(b.id)}
                 className={cn(
                   "flex flex-col justify-start rounded-lg border px-4 py-4 text-left transition-colors",
-                  selected ? "border-brand bg-brand-soft" : "border-line bg-panel hover:border-brand",
+                  selected ? "border-brand bg-brand-soft hover:brightness-95" : "border-line bg-panel hover:border-brand",
                 )}
               >
                 <p className="text-lg leading-tight">{b.name}</p>
@@ -179,7 +179,7 @@ function ForecastPage() {
                 type="button"
                 aria-pressed={lead === l.hours}
                 onClick={() => setLead(l.hours)}
-                className={cn("min-h-11 rounded-md border px-4 text-sm", lead === l.hours ? "border-brand bg-brand-soft" : "border-line bg-panel")}
+                className={cn("min-h-11 rounded-md border px-4 text-sm transition-colors duration-150", lead === l.hours ? "border-brand bg-brand-soft hover:brightness-95" : "border-line bg-panel hover:border-brand hover:bg-paper-deep")}
               >
                 {l.label}
               </button>
@@ -189,7 +189,7 @@ function ForecastPage() {
             type="button"
             onClick={request}
             disabled={requesting}
-            className="min-h-11 rounded-md bg-brand px-5 text-sm font-medium text-surface disabled:opacity-50"
+            className="min-h-11 rounded-md bg-brand px-5 text-sm font-medium text-surface disabled:opacity-50 transition-[filter] duration-150 not-disabled:hover:brightness-110"
           >
             {requesting ? "Sending…" : `Request a ${lead / 24}-day forecast`}
           </button>

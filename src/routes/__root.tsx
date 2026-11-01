@@ -13,7 +13,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "OpenIoTwx — plan a station from the place" },
+      { title: "OpenIoTwx | plan a station from the place" },
       {
         name: "description",
         content:
@@ -22,7 +22,10 @@ export const Route = createRootRoute({
       { name: "theme-color", content: "#071530" },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg?v=2" },
+      { rel: "shortcut icon", href: "/favicon.ico?v=2" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png?v=2" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=2" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },

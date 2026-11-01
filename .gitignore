@@ -10,3 +10,4 @@ deploy/mosquitto/passwd
 screenshots/
 .tanstack/
 .vercel/
+.data/

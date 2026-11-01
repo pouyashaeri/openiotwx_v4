@@ -56,8 +56,8 @@
   var moved = false;
   window.addEventListener('pointermove', function () { moved = true; }, { passive: true });
   var hovering = false;
-  function start() { hovering = true; HOVER = PHRASES[count++ % PHRASES.length]; go(HOVER); }
-  function stop() { hovering = false; go(IDLE); }
+  function start() { hovering = true; link.classList.add('is-morph'); HOVER = PHRASES[count++ % PHRASES.length]; go(HOVER); }
+  function stop() { hovering = false; link.classList.remove('is-morph'); go(IDLE); }
   function maybe() { if (moved && !hovering) start(); }
   link.addEventListener('mouseenter', maybe);
   link.addEventListener('mousemove', maybe);

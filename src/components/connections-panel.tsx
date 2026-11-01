@@ -42,7 +42,7 @@ export function ConnectionsPanel({ className }: { className?: string }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-paper-deep"
       >
         <span>
           <span id="connections-title" className="block font-medium">
@@ -63,10 +63,10 @@ export function ConnectionsPanel({ className }: { className?: string }) {
           <Field label="MQTT topic filter" value={c.mqttTopic} onChange={(v) => c.patch({ mqttTopic: v })} placeholder="ncar/iotwx/#" />
           <Field label="EJAM API" value={c.ejamUrl} onChange={(v) => c.patch({ ejamUrl: v })} placeholder="https://api.ejanalysis.com" />
           <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-            <button type="button" onClick={check} disabled={checking} className="min-h-10 rounded-md bg-brand px-4 text-sm text-surface disabled:opacity-50">
+            <button type="button" onClick={check} disabled={checking} className="min-h-10 rounded-md bg-brand px-4 text-sm text-surface disabled:opacity-50 transition-[filter] duration-150 not-disabled:hover:brightness-110">
               {checking ? "Checking…" : "Check the server"}
             </button>
-            <button type="button" onClick={() => c.reset()} className="min-h-10 rounded-md px-3 text-sm text-muted">
+            <button type="button" onClick={() => c.reset()} className="min-h-10 rounded-md px-3 text-sm text-muted transition-colors duration-150 not-disabled:hover:bg-paper-deep not-disabled:hover:text-ink">
               Back to defaults
             </button>
             {health ? <p className="text-sm text-muted">{health}</p> : null}

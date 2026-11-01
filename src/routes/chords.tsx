@@ -6,7 +6,7 @@ import { chordsBrowse, chordsImport } from "@/lib/platform/api";
 import { PORTALS } from "@/lib/platform/chords-portals";
 
 export const Route = createFileRoute("/chords")({
-  head: () => ({ meta: [{ title: "Import from CHORDS — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "Import from CHORDS | OpenIoTwx" }] }),
   component: () => (
     <RequireUser>
       <ChordsImport />
@@ -94,7 +94,7 @@ function ChordsImport() {
       </form>
       <div className="mt-2 flex flex-wrap gap-2 text-sm">
         {PORTALS.map((p) => (
-          <button key={p.url} type="button" className="text-kelp underline underline-offset-4" onClick={() => setPortal(p.url)}>
+          <button key={p.url} type="button" className="text-kelp underline underline-offset-4 transition-colors duration-150 hover:text-kelp-deep" onClick={() => setPortal(p.url)}>
             {p.name}
           </button>
         ))}

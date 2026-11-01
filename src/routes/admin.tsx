@@ -19,9 +19,11 @@ import {
 import { ago, useAsync } from "@/lib/platform/hooks";
 import { cn } from "@/lib/utils";
 import { confirmDialog } from "@/components/confirm-dialog";
+import { GdexAdmin } from "@/components/gdex-admin";
+import { SupportAdmin } from "@/components/support-admin";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin — OpenIoTwx" }, { name: "robots", content: "noindex,nofollow" }] }),
+  head: () => ({ meta: [{ title: "Admin | OpenIoTwx" }, { name: "robots", content: "noindex,nofollow" }] }),
   component: AdminEntry,
 });
 
@@ -45,7 +47,7 @@ function NotFoundPage() {
   );
 }
 
-type Tab = "overview" | "stations" | "users" | "database";
+type Tab = "overview" | "stations" | "users" | "database" | "gdex" | "support";
 
 function AdminGate() {
   const me = useAsync(() => getMe(), []);
@@ -59,23 +61,23 @@ function AdminGate() {
       </p>
       <h1 className="mt-1 font-display text-4xl">Network operations</h1>
       <div className="mt-5 flex gap-1 border-b border-line" role="tablist">
-        {(["overview", "stations", "users", "database"] as Tab[]).map((t) => (
+        {(["overview", "stations", "users", "database", "gdex", "support"] as Tab[]).map((t) => (
           <button
             key={t}
             role="tab"
             aria-selected={tab === t}
             onClick={() => setTab(t)}
             className={cn(
-              "min-h-11 px-4 text-sm capitalize",
-              tab === t ? "border-b-2 border-kelp font-medium text-kelp" : "text-muted",
+              "min-h-11 px-4 text-sm capitalize transition-colors duration-150 hover:bg-paper-deep",
+              tab === t ? "border-b-2 border-kelp font-medium text-kelp" : "text-muted hover:text-ink",
             )}
           >
-            {t}
+            {t === "gdex" ? "GDEX" : t}
           </button>
         ))}
       </div>
       <div className="mt-6">
-        {tab === "overview" ? <Overview /> : tab === "stations" ? <Stations /> : tab === "database" ? <Database /> : <Users me={me.data} />}
+        {tab === "overview" ? <Overview /> : tab === "stations" ? <Stations /> : tab === "database" ? <Database /> : tab === "gdex" ? <GdexAdmin /> : tab === "support" ? <SupportAdmin /> : <Users me={me.data} />}
       </div>
     </main>
   );
@@ -317,7 +319,7 @@ function Users({ me }: { me: Me }) {
             <li key={u.user_id} className="rounded-2xl border border-line bg-card px-4 py-3">
               <button
                 type="button"
-                className="block w-full min-w-0 text-left"
+                className="block w-full min-w-0 rounded-lg text-left transition-colors duration-150 hover:bg-paper-deep"
                 onClick={() => setOpen(open === u.user_id ? null : u.user_id)}
                 aria-expanded={open === u.user_id}
               >
@@ -483,7 +485,7 @@ function Database() {
           {d?.tables.map((t) => (
             <li key={t.name}>
               <button
-                className={cn("flex min-h-11 w-full items-center justify-between px-3 text-sm", table === t.name && "bg-moss font-medium text-kelp")}
+                className={cn("flex min-h-11 w-full items-center justify-between px-3 text-sm transition-colors duration-150", table === t.name ? "bg-moss font-medium text-kelp hover:brightness-95" : "hover:bg-paper-deep")}
                 onClick={() => {
                   setTable(t.name);
                   setOffset(0);

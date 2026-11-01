@@ -8,7 +8,7 @@ import { useDraft, type Persisted } from "@/lib/wizard/store";
 import { confirmDialog } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/account")({
-  head: () => ({ meta: [{ title: "My system — OpenIoTwx" }] }),
+  head: () => ({ meta: [{ title: "My system | OpenIoTwx" }] }),
   component: () => (
     <RequireUser>
       <Account />
@@ -79,7 +79,7 @@ function Account() {
           </div>
         </div>
         <details className="mt-4 rounded-2xl border border-line bg-card p-4">
-          <summary className="cursor-pointer text-sm font-medium">Add a station by hand</summary>
+          <summary className="cursor-pointer text-sm font-medium transition-colors duration-150 hover:text-kelp">Add a station by hand</summary>
           <form onSubmit={addStation} className="mt-3 grid gap-4">
             <input
               name="name"

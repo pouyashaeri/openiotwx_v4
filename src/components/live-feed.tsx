@@ -82,11 +82,11 @@ export function LiveFeed({ className }: { className?: string }) {
             {state === "live" ? "Listening" : state === "connecting" ? "Connecting" : state === "error" ? "Not connected" : "Off"}
           </span>
           {state === "live" || state === "connecting" ? (
-            <button type="button" onClick={stop} className="min-h-10 rounded-md border border-line px-3 text-sm">
+            <button type="button" onClick={stop} className="min-h-10 rounded-md border border-line px-3 text-sm transition-colors duration-150 not-disabled:hover:border-brand not-disabled:hover:bg-paper-deep">
               Stop
             </button>
           ) : (
-            <button type="button" onClick={start} className="min-h-10 rounded-md bg-brand px-3 text-sm text-surface">
+            <button type="button" onClick={start} className="min-h-10 rounded-md bg-brand px-3 text-sm text-surface transition-[filter] duration-150 not-disabled:hover:brightness-110">
               Listen
             </button>
           )}
