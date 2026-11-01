@@ -1,0 +1,9 @@
+user stations
+topic write openiotwx/#
+topic write sensors/#
+
+user bridge
+topic read $share/bridge/openiotwx/#
+topic read openiotwx/#
+topic read $share/bridge/sensors/#
+topic read sensors/#

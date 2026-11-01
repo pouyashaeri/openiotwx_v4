@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IoTwx Mesonet — Station Setup</title>
+  <script>
+    (function() {
+      if (true) { // light only, like the rest of the site (its header has no theme toggle)
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --border:    #30363d;
+      --accent:    #58a6ff;
+      --accent2:   #3fb950;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --danger:    #f85149;
+      --radius:    8px;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --font-sans: 'Inter', system-ui, sans-serif;
+    }
+
+    :root[data-theme="light"] {
+      --bg:        #ffffff;
+      --surface:   #f6f8fa;
+      --border:    #d0d7de;
+      --accent:    #0969da;
+      --accent2:   #1a7f37;
+      --text:      #1f2328;
+      --muted:     #656d76;
+      --danger:    #cf222e;
+    }
+
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--font-sans); min-height: 100vh;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .theme-toggle {
+      margin-left: auto; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; width: 32px; height: 32px; display: flex;
+      align-items: center; justify-content: center; cursor: pointer;
+      font-size: 15px; transition: border-color 0.15s, background 0.15s;
+    }
+    .theme-toggle:hover { border-color: var(--accent); }
+
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 16px 32px; display: flex; align-items: center; gap: 12px;
+    }
+    .logo { font-family: var(--font-mono); font-size: 13px; color: var(--accent); letter-spacing: 0.05em; }
+    .logo span { color: var(--accent2); }
+    header h1 { font-size: 15px; font-weight: 600; }
+
+    .steps {
+      display: flex; align-items: center; gap: 0;
+      padding: 20px max(16px, calc((100% - 64rem) / 2 + 16px)); border-bottom: 1px solid var(--border); background: var(--surface);
+    }
+    .step { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+    .step.active { color: var(--text); }
+    a.step { text-decoration: none; }
+    a.step:hover { color: var(--text); }
+    a.step:hover .step-num { border-color: var(--accent); }
+    .steps { flex-wrap: wrap; row-gap: 10px; }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; font-family: var(--font-mono);
+    }
+    .step.active .step-num { border-color: var(--accent); color: var(--accent); background: rgba(88,166,255,0.1); }
+    .step-divider { flex: 1; height: 1px; background: var(--border); margin: 0 16px; max-width: 48px; }
+
+    main { max-width: 64rem; margin: 0 auto; padding: 40px 16px 80px; }
+
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .page-sub { font-size: 14px; color: var(--muted); margin-bottom: 32px; line-height: 1.5; }
+
+    /* ── Device picker ── */
+    .device-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 36px; }
+    .device-card {
+      background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius);
+      padding: 20px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .device-card:hover { border-color: #4d5560; }
+    .device-card.selected { border-color: var(--accent); background: rgba(88,166,255,0.06); }
+    .device-icon { font-size: 22px; margin-bottom: 10px; }
+    .device-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .device-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .device-radio {
+      width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border);
+      margin-bottom: 10px; position: relative; float: right;
+    }
+    .device-card.selected .device-radio { border-color: var(--accent); }
+    .device-card.selected .device-radio::after {
+      content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent);
+    }
+
+    /* ── Section ── */
+    .section {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 20px; overflow: hidden;
+    }
+    .section-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .section-icon { font-size: 16px; }
+    .section-title { font-size: 13px; font-weight: 600; }
+    .section-desc { font-size: 12px; color: var(--muted); margin-left: auto; }
+    .section-body { padding: 20px; display: grid; gap: 16px; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+    label { font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0.02em; text-transform: uppercase; }
+    input[type="text"], input[type="email"], input[type="password"], input[type="number"], select {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-family: var(--font-sans); font-size: 14px;
+      padding: 9px 12px; width: 100%; transition: border-color 0.15s; outline: none;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--muted); }
+    .field-hint { font-size: 11px; color: var(--muted); }
+    .pwd-wrap { position: relative; }
+    .pwd-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; }
+
+    .advanced-toggle {
+      display: flex; align-items: center; gap: 8px; background: none; border: none;
+      color: var(--muted); font-size: 13px; cursor: pointer; padding: 4px 0;
+      font-family: var(--font-sans); margin-top: 4px;
+    }
+    .advanced-toggle:hover { color: var(--text); }
+    .toggle-arrow { transition: transform 0.2s; font-size: 10px; }
+    .toggle-arrow.open { transform: rotate(90deg); }
+    .advanced-section { display: none; margin-top: 8px; }
+    .advanced-section.open { display: block; }
+
+    .device-fields { display: none; }
+    .device-fields.active { display: block; }
+
+    /* ── Config upload dropzone ── */
+    .dropzone {
+      border: 1.5px dashed var(--border); border-radius: var(--radius);
+      padding: 18px; text-align: center; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s; margin-bottom: 20px;
+    }
+    .dropzone:hover { border-color: #4d5560; }
+    .dropzone.dragover { border-color: var(--accent); background: rgba(88,166,255,0.06); }
+    .dropzone-icon { font-size: 20px; margin-bottom: 6px; }
+    .dropzone-text { font-size: 13px; color: var(--muted); }
+    .dropzone-text strong { color: var(--accent); }
+    .dropzone-filename { font-size: 12px; color: var(--accent2); margin-top: 8px; }
+    .dropzone-error { font-size: 12px; color: var(--danger); margin-top: 8px; }
+
+    /* ── Custom number-input stepper (replaces native browser arrows) ── */
+    .number-field { position: relative; }
+    .number-field input[type="number"] {
+      padding-right: 30px;
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+    .number-field input[type="number"]::-webkit-outer-spin-button,
+    .number-field input[type="number"]::-webkit-inner-spin-button {
+      appearance: none;
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .number-stepper {
+      position: absolute; right: 1px; top: 1px; bottom: 1px; width: 24px;
+      display: flex; flex-direction: column;
+      border-left: 1px solid var(--border);
+      border-radius: 0 5px 5px 0; overflow: hidden;
+    }
+    .number-stepper button {
+      flex: 1; background: var(--bg); border: none; color: var(--muted);
+      cursor: pointer; font-size: 8px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.1s, color 0.1s; padding: 0;
+    }
+    .number-stepper button:first-child { border-bottom: 1px solid var(--border); }
+    .number-stepper button:hover { background: var(--surface); color: var(--accent); }
+    .number-stepper button:active { background: rgba(88,166,255,0.15); }
+
+    .submit-area { margin-top: 32px; display: flex; justify-content: flex-end; }
+    .btn-primary {
+      background: var(--accent); color: #0d1117; border: none; border-radius: 6px;
+      font-size: 14px; font-weight: 600; padding: 11px 28px; cursor: pointer;
+      font-family: var(--font-sans); transition: opacity 0.15s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .req { color: var(--danger); margin-left: 2px; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="theme.css" />
+  <script src="dialog.js"></script>
+  <script src="header.js" defer></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="site-logo">
+      <span class="site-logo-mark"><span></span></span>
+      <span class="site-logo-text">openiotwx<em>/</em></span>
+    </a>
+    <nav class="site-nav" id="siteNav" aria-label="Primary">
+      <a href="/wizard">Wizard</a>
+      <a href="/plan">Plan</a>
+      <a href="/analysis">Analysis</a>
+      <a href="/forecast">Forecast</a>
+      <a href="/community">Community</a>
+      <a href="/library">Library</a>
+      <a href="/map">Map</a>
+      <a href="/flash-wizard/index.html" aria-current="page" class="active">Flash</a>
+      <span class="nav-sep" aria-hidden="true"></span>
+      <span id="acct" style="display:contents"></span>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark mode" type="button" hidden>🌙</button>
+    </nav>
+    <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="siteNav">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bars" d="M3 6H19M3 11H19M3 16H19"/><path class="cross" d="M4 4L18 18M18 4L4 18" style="display:none"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="steps">
+  <div class="step active"><div class="step-num">1</div>Configure</div>
+  <div class="step-divider"></div>
+  <div class="step"><div class="step-num">2</div>Flash</div>
+  <div class="step-divider"></div>
+  <a class="step" href="/deploy" title="After flashing: set the station up and publish its data"><div class="step-num">3</div>Deploy and Publish</a>
+  <div class="step-divider"></div>
+  <a class="step" href="/track" title="Watch the station's data and run a forecast"><div class="step-num">4</div>Track and Forecast</a>
+</div>
+
+<main>
+  <div class="page-title">Configure your station</div>
+  <p class="page-sub">Pick your hardware, fill in your details, and complete setup directly in the browser.</p>
+
+  <!-- Device picker -->
+  <div class="device-picker">
+    <div class="device-card selected" id="pickRp2040" data-device="rp2040">
+      <div class="device-radio"></div>
+      <div class="device-icon">📡</div>
+      <div class="device-name">RP2040 + RFM95 LoRa</div>
+      <div class="device-desc">Adafruit Feather RP2040 RFM95 node. The browser flashes unchanged firmware, then saves your config separately in LittleFS.</div>
+    </div>
+    <div class="device-card" id="pickEsp32" data-device="esp32">
+      <div class="device-radio"></div>
+      <div class="device-icon">📶</div>
+      <div class="device-name">ESP32 Atom Lite</div>
+      <div class="device-desc">M5Stack Atom Lite WiFi/PoE station (BME680, RG15, etc). Flashed over USB, no drivers needed.</div>
+    </div>
+  </div>
+
+  <form id="configForm" novalidate>
+
+    <!-- ══════════════ RP2040 FIELDS ══════════════ -->
+    <div class="device-fields active" id="rp2040Fields">
+
+      <div class="dropzone" id="rp2040Dropzone">
+        <input type="file" id="rp2040FileInput" accept=".json,application/json" style="display:none;" />
+        <div class="dropzone-icon">📄</div>
+        <div class="dropzone-text">Drag &amp; drop your RP2040 <span class="code" style="font-family:var(--font-mono);">config.json</span> — or input manually below</div>
+        <div class="dropzone-filename" id="rp2040DropFilename"></div>
+        <div class="dropzone-error" id="rp2040DropError"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">👤</span>
+          <span class="section-title">Station Owner</span>
+          <span class="section-desc">Who operates this station</span>
+        </div>
+        <div class="section-body">
+          <div class="field-row">
+            <div class="field">
+              <label>First name <span class="req">*</span></label>
+              <input type="text" id="firstname" placeholder="e.g. Jane" maxlength="47" />
+            </div>
+            <div class="field">
+              <label>Last name <span class="req">*</span></label>
+              <input type="text" id="lastname" placeholder="e.g. Smith" maxlength="47" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Email <span class="req">*</span></label>
+            <input type="email" id="email" placeholder="your@email.com" maxlength="63" />
+          </div>
+          <div class="field">
+            <label>Organization</label>
+            <input type="text" id="organization" placeholder="e.g. your University / Lab" maxlength="63" />
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">📍</span>
+          <span class="section-title">Station Location</span>
+          <span class="section-desc">Where is this station deployed</span>
+        </div>
+        <div class="section-body">
+          <div class="field-row-3">
+            <div class="field">
+              <label>Latitude</label>
+              <input type="number" id="latitude" placeholder="e.g. 39.9784" step="0.0001" min="-90" max="90" />
+            </div>
+            <div class="field">
+              <label>Longitude</label>
+              <input type="number" id="longitude" placeholder="e.g. -105.2749" step="0.0001" min="-180" max="180" />
+            </div>
+            <div class="field">
+              <label>Altitude (m)</label>
+              <input type="number" id="altitude" placeholder="e.g. 1650" step="1" min="-500" max="10000" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Device</label>
+            <input type="text" value="adafruit RP2040 RFM95 LoRa" readonly style="opacity:0.5;cursor:not-allowed;" />
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">⚙️</span>
+          <span class="section-title">Advanced</span>
+          <span class="section-desc">Timing &amp; radio — defaults work for most setups</span>
+        </div>
+        <div class="section-body">
+          <button type="button" class="advanced-toggle" id="rp2040AdvToggle">
+            <span class="toggle-arrow" id="rp2040AdvArrow">▶</span>
+            Show advanced settings
+          </button>
+          <div class="advanced-section" id="rp2040AdvSection">
+            <div style="display:grid;gap:16px;margin-top:8px;">
+              <div class="field-row">
+                <div class="field">
+                  <label>Sensor transmit delay (ms)</label>
+                  <input type="number" id="sensor_transmit_delay" value="60000" min="1000" max="604800000" />
+                  <span class="field-hint">How often sensors publish</span>
+                </div>
+                <div class="field">
+                  <label>Station info interval (ms)</label>
+                  <input type="number" id="station_info_interval" value="86400000" min="60000" max="604800000" />
+                  <span class="field-hint">Default 24 h</span>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label>Pong timeout (ms)</label>
+                  <input type="number" id="pong_timeout" value="5000" min="100" max="600000" />
+                </div>
+                <div class="field">
+                  <label>Connect timeout (ms)</label>
+                  <input type="number" id="connect_timeout" value="900000" min="1000" max="86400000" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════════════ ESP32 ATOM LITE FIELDS ══════════════ -->
+    <div class="device-fields" id="esp32Fields">
+
+      <div class="dropzone" id="esp32Dropzone">
+        <input type="file" id="esp32FileInput" accept=".json,application/json" style="display:none;" />
+        <div class="dropzone-icon">📄</div>
+        <div class="dropzone-text">Drag &amp; drop your ESP32 Atom Lite <span class="code" style="font-family:var(--font-mono);">config.json</span> — or input manually below</div>
+        <div class="dropzone-filename" id="esp32DropFilename"></div>
+        <div class="dropzone-error" id="esp32DropError"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">🏷️</span>
+          <span class="section-title">Station Identity</span>
+          <span class="section-desc">MQTT device ID &amp; topic</span>
+        </div>
+        <div class="section-body">
+          <div class="field">
+            <label>Device ID <span class="req">*</span></label>
+            <input type="text" id="esp_id" placeholder="e.g. m5atom/esp32/aabbffee" maxlength="47" />
+            <span class="field-hint">Unique identifier for this station — appears in every published payload</span>
+          </div>
+          <div class="field">
+            <label>MQTT Topic <span class="req">*</span></label>
+            <input type="text" id="esp_topic" placeholder="e.g. ncar/iotwx/co/boulder/station000" maxlength="95" />
+            <span class="field-hint">Full topic path this station publishes measurements to</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">📶</span>
+          <span class="section-title">WiFi</span>
+          <span class="section-desc">Network the station connects through</span>
+        </div>
+        <div class="section-body">
+          <div class="field">
+            <label>Use WiFi (vs. Ethernet/PoE)</label>
+            <select id="esp_use_wifi">
+              <option value="1" selected>WiFi</option>
+              <option value="0">Ethernet / PoE HAT</option>
+            </select>
+          </div>
+          <div class="field-row" id="esp_wifiFields">
+            <div class="field">
+              <label>WiFi SSID</label>
+              <input type="text" id="esp_wifi_ssid" placeholder="e.g. UCAR Visitor" maxlength="47" />
+            </div>
+            <div class="field">
+              <label>WiFi Password</label>
+              <div class="pwd-wrap">
+                <input type="password" id="esp_wifi_pwd" placeholder="leave blank for open networks" maxlength="63" />
+                <button type="button" class="pwd-toggle" id="esp_pwdToggle">show</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">📡</span>
+          <span class="section-title">MQTT Broker</span>
+          <span class="section-desc">Where measurements get published</span>
+        </div>
+        <div class="section-body">
+          <div class="field-row">
+            <div class="field">
+              <label>Broker Host <span class="req">*</span></label>
+              <input type="text" id="esp_mq_ip" placeholder="e.g. iotwx.ucar.edu" maxlength="63" />
+            </div>
+            <div class="field">
+              <label>Broker Port</label>
+              <input type="number" id="esp_mq_port" value="1883" min="1" max="65535" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">⚙️</span>
+          <span class="section-title">Advanced</span>
+          <span class="section-desc">Timing &amp; hardware — defaults work for most setups</span>
+        </div>
+        <div class="section-body">
+          <button type="button" class="advanced-toggle" id="espAdvToggle">
+            <span class="toggle-arrow" id="espAdvArrow">▶</span>
+            Show advanced settings
+          </button>
+          <div class="advanced-section" id="espAdvSection">
+            <div style="display:grid;gap:16px;margin-top:8px;">
+              <div class="field-row-3">
+                <div class="field">
+                  <label>Publish interval (min)</label>
+                  <input type="number" id="esp_publish_interval" value="2" min="1" />
+                </div>
+                <div class="field">
+                  <label>Reset interval (min)</label>
+                  <input type="number" id="esp_reset_interval" value="360" min="10" />
+                  <span class="field-hint">Full reboot cadence</span>
+                </div>
+                <div class="field">
+                  <label>Timezone offset (s)</label>
+                  <input type="number" id="esp_timezone" value="21600" />
+                </div>
+              </div>
+              <div class="field-row-3">
+                <div class="field">
+                  <label>GPIO config</label>
+                  <select id="esp_gpio_config">
+                    <option value="A" selected>A (Grove pins 21,25)</option>
+                    <option value="B">B (Grove pins 26,32)</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Max CPU freq (MHz)</label>
+                  <select id="esp_max_frequency">
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="40">40</option>
+                    <option value="80" selected>80</option>
+                    <option value="160">160</option>
+                    <option value="240">240</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Aspiration spin-up (s)</label>
+                  <input type="number" id="esp_aspiration_time" value="10" min="0" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="submit-area">
+      <button type="submit" class="btn-primary">Save &amp; go to Flash <span>→</span></button>
+    </div>
+
+  </form>
+</main>
+
+<script>
+  // ── Device picker ──
+  const pickRp2040 = document.getElementById('pickRp2040');
+  const pickEsp32  = document.getElementById('pickEsp32');
+  const rp2040Fields = document.getElementById('rp2040Fields');
+  const esp32Fields  = document.getElementById('esp32Fields');
+  let selectedDevice = 'rp2040';
+
+  function selectDevice(device) {
+    selectedDevice = device;
+    pickRp2040.classList.toggle('selected', device === 'rp2040');
+    pickEsp32.classList.toggle('selected', device === 'esp32');
+    rp2040Fields.classList.toggle('active', device === 'rp2040');
+    esp32Fields.classList.toggle('active', device === 'esp32');
+  }
+  pickRp2040.addEventListener('click', () => selectDevice('rp2040'));
+  pickEsp32.addEventListener('click', () => selectDevice('esp32'));
+
+  // ── Advanced toggles (both device sections) ──
+  function wireAdvToggle(toggleId, arrowId, sectionId) {
+    const toggle = document.getElementById(toggleId);
+    const arrow  = document.getElementById(arrowId);
+    const section = document.getElementById(sectionId);
+    toggle.addEventListener('click', () => {
+      section.classList.toggle('open');
+      arrow.classList.toggle('open');
+      toggle.childNodes[2].textContent = section.classList.contains('open')
+        ? ' Hide advanced settings' : ' Show advanced settings';
+    });
+  }
+  wireAdvToggle('rp2040AdvToggle', 'rp2040AdvArrow', 'rp2040AdvSection');
+  wireAdvToggle('espAdvToggle', 'espAdvArrow', 'espAdvSection');
+
+  // ── ESP32 password show/hide ──
+  const espPwdInput = document.getElementById('esp_wifi_pwd');
+  const espPwdToggle = document.getElementById('esp_pwdToggle');
+  espPwdToggle.addEventListener('click', () => {
+    const show = espPwdInput.type === 'password';
+    espPwdInput.type = show ? 'text' : 'password';
+    espPwdToggle.textContent = show ? 'hide' : 'show';
+  });
+
+  // ── Pre-fill from sessionStorage if returning ──
+  const saved = JSON.parse(sessionStorage.getItem('iotwx_setup') || '{}');
+  if (saved.device) selectDevice(saved.device);
+
+  if (saved.device === 'rp2040' && saved.config) {
+    const si = saved.config.station_info || {};
+    const ra = saved.config.radio || {};
+    if (si.firstname) document.getElementById('firstname').value = si.firstname;
+    if (si.lastname)  document.getElementById('lastname').value  = si.lastname;
+    if (si.email)     document.getElementById('email').value     = si.email;
+    if (si.organization) document.getElementById('organization').value = si.organization;
+    if (si.latitude)  document.getElementById('latitude').value  = si.latitude;
+    if (si.longitude) document.getElementById('longitude').value = si.longitude;
+    if (si.altitude)  document.getElementById('altitude').value  = si.altitude;
+    if (si.sensor_transmit_delay) document.getElementById('sensor_transmit_delay').value = si.sensor_transmit_delay;
+    if (si.station_info_interval) document.getElementById('station_info_interval').value = si.station_info_interval;
+    if (ra.pong_timeout)    document.getElementById('pong_timeout').value    = ra.pong_timeout;
+    if (ra.connect_timeout) document.getElementById('connect_timeout').value = ra.connect_timeout;
+  }
+  if (saved.device === 'esp32' && saved.config) {
+    const c = saved.config;
+    const map = {
+      esp_id: 'id', esp_topic: 'topic', esp_wifi_ssid: 'wifi_ssid', esp_wifi_pwd: 'wifi_pwd',
+      esp_mq_ip: 'mq_ip', esp_mq_port: 'mq_port', esp_use_wifi: 'use_wifi',
+      esp_publish_interval: 'publish_interval', esp_reset_interval: 'reset_interval',
+      esp_timezone: 'timezone', esp_gpio_config: 'gpio_config',
+      esp_max_frequency: 'max_frequency', esp_aspiration_time: 'aspiration_time',
+    };
+    for (const [elId, key] of Object.entries(map)) {
+      if (c[key] !== undefined) {
+        const el = document.getElementById(elId);
+        if (el) el.value = c[key];
+      }
+    }
+  }
+
+  function validateConfigText(value, label, minBytes, maxBytes) {
+    const bytes = new TextEncoder().encode(value).byteLength;
+    if (bytes < minBytes || bytes > maxBytes) {
+      throw new Error(`${label} must be between ${minBytes} and ${maxBytes} UTF-8 bytes.`);
+    }
+    if (/[\x00-\x1F\x7F]/.test(value)) {
+      throw new Error(`${label} cannot contain control characters.`);
+    }
+    return value;
+  }
+
+  function readConfigNumber(id, label, fallback, minimum, maximum) {
+    const raw = document.getElementById(id).value.trim();
+    const value = raw === '' ? fallback : Number(raw);
+    if (!Number.isFinite(value) || value < minimum || value > maximum) {
+      throw new Error(`${label} must be between ${minimum} and ${maximum}.`);
+    }
+    return value;
+  }
+
+  // ── Submit ──
+  document.getElementById('configForm').addEventListener('submit', e => {
+    e.preventDefault();
+
+    if (selectedDevice === 'rp2040') {
+      try {
+        const firstname = validateConfigText(
+          document.getElementById('firstname').value.trim(),
+          'First name',
+          1,
+          47
+        );
+        const lastname = validateConfigText(
+          document.getElementById('lastname').value.trim(),
+          'Last name',
+          1,
+          47
+        );
+        const email = validateConfigText(
+          document.getElementById('email').value.trim(),
+          'Email',
+          3,
+          63
+        );
+        const organization = validateConfigText(
+          document.getElementById('organization').value.trim(),
+          'Organization',
+          0,
+          63
+        );
+
+        if (!email.includes('@')) {
+          throw new Error('Enter a valid email address.');
+        }
+
+        const config = {
+          schema_version: 1,
+          radio: {
+            overload_threshold: 0.85,
+            station_relay_midpoint: 10,
+            station_relay_steepness: 0.2,
+            station_sensor_midpoint: 5,
+            station_sensor_steepness: 0.5,
+            station_relay_weight: 0.7,
+            station_sensor_weight: 0.3,
+            score_rssi_weight: 0.35,
+            score_load_weight: 0.35,
+            score_type_weight: 0.2,
+            score_relay_weight: 0.1,
+            score_relay_decay: 1.0,
+            pong_timeout: readConfigNumber(
+              'pong_timeout',
+              'Pong timeout',
+              5000,
+              100,
+              600000
+            ),
+            connect_timeout: readConfigNumber(
+              'connect_timeout',
+              'Connect timeout',
+              900000,
+              1000,
+              86400000
+            ),
+          },
+          station_info: {
+            firstname,
+            lastname,
+            email,
+            organization,
+            device: 'adafruit RP2040 RFM95 LoRa',
+            latitude: readConfigNumber('latitude', 'Latitude', 0, -90, 90),
+            longitude: readConfigNumber('longitude', 'Longitude', 0, -180, 180),
+            altitude: readConfigNumber('altitude', 'Altitude', 0, -500, 10000),
+            station_info_interval: readConfigNumber(
+              'station_info_interval',
+              'Station info interval',
+              86400000,
+              60000,
+              604800000
+            ),
+            fixed_deployment: false,
+            gps_fixed_interval: 43200000,
+            sensor_transmit_delay: readConfigNumber(
+              'sensor_transmit_delay',
+              'Sensor transmit delay',
+              60000,
+              1000,
+              604800000
+            ),
+          }
+        };
+
+        const commandBytes = new TextEncoder().encode(
+          `IOTWX_CONFIG ${JSON.stringify(config)}`
+        ).byteLength;
+        if (commandBytes > 2048) {
+          throw new Error('The complete RP2040 configuration exceeds 2048 bytes.');
+        }
+
+        sessionStorage.setItem(
+          'iotwx_setup',
+          JSON.stringify({ device: 'rp2040', config })
+        );
+      } catch (error) {
+        themedAlert(error.message);
+        return;
+      }
+
+    } else {
+      try {
+        const id = validateConfigText(
+          document.getElementById('esp_id').value.trim(),
+          'Device ID',
+          1,
+          47
+        );
+        const topic = validateConfigText(
+          document.getElementById('esp_topic').value.trim(),
+          'MQTT topic',
+          1,
+          95
+        );
+        const mq_ip = validateConfigText(
+          document.getElementById('esp_mq_ip').value.trim(),
+          'MQTT broker host',
+          1,
+          63
+        );
+        const use_wifi = document.getElementById('esp_use_wifi').value;
+        const wifi_ssid = validateConfigText(
+          document.getElementById('esp_wifi_ssid').value.trim(),
+          'Wi-Fi SSID',
+          0,
+          47
+        );
+        const wifi_pwd = validateConfigText(
+          document.getElementById('esp_wifi_pwd').value,
+          'Wi-Fi password',
+          0,
+          63
+        );
+
+        if (use_wifi !== '0' && use_wifi !== '1') {
+          throw new Error('Connection mode must be Wi-Fi or Ethernet/PoE.');
+        }
+        if (use_wifi === '1' && !wifi_ssid) {
+          throw new Error('Enter a Wi-Fi SSID, or switch to Ethernet/PoE.');
+        }
+
+        const gpio_config = document.getElementById('esp_gpio_config').value;
+        if (gpio_config !== 'A' && gpio_config !== 'B') {
+          throw new Error('GPIO configuration must be A or B.');
+        }
+
+        const max_frequency = Number(
+          document.getElementById('esp_max_frequency').value
+        );
+        if (![10, 20, 40, 80, 160, 240].includes(max_frequency)) {
+          throw new Error('CPU frequency must be 10, 20, 40, 80, 160, or 240 MHz.');
+        }
+
+        const config = {
+          id,
+          topic,
+          mq_ip,
+          mq_port: String(readConfigNumber(
+            'esp_mq_port', 'MQTT port', 1883, 1, 65535
+          )),
+          use_wifi,
+          wifi_ssid,
+          wifi_pwd,
+          publish_interval: String(readConfigNumber(
+            'esp_publish_interval', 'Publish interval', 2, 1, 1440
+          )),
+          reset_interval: String(readConfigNumber(
+            'esp_reset_interval', 'Reset interval', 360, 10, 10080
+          )),
+          timezone: String(readConfigNumber(
+            'esp_timezone', 'Timezone offset', 21600, -86400, 86400
+          )),
+          gpio_config,
+          max_frequency: String(max_frequency),
+          aspiration_time: String(readConfigNumber(
+            'esp_aspiration_time', 'Aspiration spin-up time', 10, 0, 600
+          )),
+        };
+
+        const commandBytes = new TextEncoder().encode(
+          `IOTWX_CONFIG ${JSON.stringify(config)}`
+        ).byteLength;
+        if (commandBytes > 2048) {
+          throw new Error('The complete ESP32 configuration exceeds 2048 bytes.');
+        }
+
+        sessionStorage.setItem(
+          'iotwx_setup',
+          JSON.stringify({ device: 'esp32', config })
+        );
+      } catch (error) {
+        themedAlert(error.message);
+        return;
+      }
+    }
+
+    // Preserve generic RP2040 test mode when moving to the flashing page.
+    const flashPage = new URL('flash.html', window.location.href);
+    flashPage.search = window.location.search;
+    window.location.href = flashPage.href;
+  });
+  // ── Config JSON upload (drag & drop + click-to-browse) ──
+  function setupDropzone(zoneId, inputId, filenameId, errorId, onParse) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    const filenameEl = document.getElementById(filenameId);
+    const errorEl = document.getElementById(errorId);
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      filenameEl.textContent = '';
+    }
+    function showSuccess(name) {
+      errorEl.textContent = '';
+      filenameEl.textContent = `✓ Loaded ${name}`;
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith('.json')) {
+        showError('Please upload a .json file.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const json = JSON.parse(reader.result);
+          onParse(json);
+          showSuccess(file.name);
+        } catch (e) {
+          showError(e.message || 'Could not parse this file.');
+        }
+      };
+      reader.onerror = () => showError('Could not read file.');
+      reader.readAsText(file);
+    }
+
+    zone.addEventListener('click', () => input.click());
+    input.addEventListener('change', () => handleFile(input.files[0]));
+
+    zone.addEventListener('dragover', e => {
+      e.preventDefault();
+      zone.classList.add('dragover');
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      handleFile(e.dataTransfer.files[0]);
+    });
+  }
+
+  // RP2040 config.json uses nested "station_info" / "radio" objects
+  function applyRp2040Config(json) {
+    if (!json.station_info && !json.radio) {
+      throw new Error('This doesn\'t look like an RP2040 config file (missing "station_info"/"radio").');
+    }
+    const si = json.station_info || {};
+    const ra = json.radio || {};
+    if (si.firstname !== undefined)     document.getElementById('firstname').value = si.firstname;
+    if (si.lastname !== undefined)      document.getElementById('lastname').value = si.lastname;
+    if (si.email !== undefined)         document.getElementById('email').value = si.email;
+    if (si.organization !== undefined)  document.getElementById('organization').value = si.organization;
+    if (si.latitude !== undefined)      document.getElementById('latitude').value = si.latitude;
+    if (si.longitude !== undefined)     document.getElementById('longitude').value = si.longitude;
+    if (si.altitude !== undefined)      document.getElementById('altitude').value = si.altitude;
+    if (si.sensor_transmit_delay !== undefined)  document.getElementById('sensor_transmit_delay').value = si.sensor_transmit_delay;
+    if (si.station_info_interval !== undefined)  document.getElementById('station_info_interval').value = si.station_info_interval;
+    if (ra.pong_timeout !== undefined)    document.getElementById('pong_timeout').value = ra.pong_timeout;
+    if (ra.connect_timeout !== undefined) document.getElementById('connect_timeout').value = ra.connect_timeout;
+  }
+
+  // ESP32 Atom Lite config.json is flat, with "iotwx_*" string-valued keys
+  function applyEsp32Config(json) {
+    if (json.iotwx_id === undefined && json.iotwx_mq_ip === undefined) {
+      throw new Error('This doesn\'t look like an ESP32 Atom Lite config file (missing "iotwx_id"/"iotwx_mq_ip").');
+    }
+    const map = {
+      esp_id:               'iotwx_id',
+      esp_topic:            'iotwx_topic',
+      esp_wifi_ssid:        'iotwx_wifi_ssid',
+      esp_wifi_pwd:         'iotwx_wifi_pwd',
+      esp_mq_ip:            'iotwx_mq_ip',
+      esp_mq_port:          'iotwx_mq_port',
+      esp_use_wifi:         'iotwx_use_wifi',
+      esp_publish_interval: 'iotwx_publish_interval',
+      esp_reset_interval:   'iotwx_reset_interval',
+      esp_timezone:         'iotwx_timezone',
+      esp_gpio_config:      'iotwx_gpio_config',
+      esp_max_frequency:    'iotwx_max_frequency',
+      esp_aspiration_time:  'iotwx_aspiration_spinup_time',
+    };
+    for (const [elId, jsonKey] of Object.entries(map)) {
+      if (json[jsonKey] !== undefined) {
+        const el = document.getElementById(elId);
+        if (el) el.value = json[jsonKey];
+      }
+    }
+  }
+
+  setupDropzone('rp2040Dropzone', 'rp2040FileInput', 'rp2040DropFilename', 'rp2040DropError', applyRp2040Config);
+  setupDropzone('esp32Dropzone', 'esp32FileInput', 'esp32DropFilename', 'esp32DropError', applyEsp32Config);
+
+  // ── Custom number-input steppers (replaces native browser arrows) ──
+  document.querySelectorAll('input[type="number"]').forEach(input => {
+    const wrap = document.createElement('div');
+    wrap.className = 'number-field';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    const stepper = document.createElement('div');
+    stepper.className = 'number-stepper';
+    stepper.innerHTML = `
+      <button type="button" data-dir="up" tabindex="-1" aria-label="Increment">▲</button>
+      <button type="button" data-dir="down" tabindex="-1" aria-label="Decrement">▼</button>
+    `;
+    wrap.appendChild(stepper);
+  });
+
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.number-stepper button');
+    if (!btn) return;
+    const input = btn.closest('.number-field').querySelector('input[type="number"]');
+    if (!input) return;
+
+    const step = parseFloat(input.step) || 1;
+    const min = input.min !== '' ? parseFloat(input.min) : -Infinity;
+    const max = input.max !== '' ? parseFloat(input.max) : Infinity;
+    let val = parseFloat(input.value);
+    if (isNaN(val)) val = 0;
+    val = btn.dataset.dir === 'up' ? val + step : val - step;
+    val = Math.min(max, Math.max(min, val));
+
+    const decimals = (String(step).split('.')[1] || '').length;
+    input.value = decimals ? val.toFixed(decimals) : String(val);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
+  // ── Theme toggle ──
+  (function() {
+    const btn = document.getElementById('themeToggle');
+    const root = document.documentElement;
+    function updateIcon() {
+      btn.textContent = root.getAttribute('data-theme') === 'light' ? '🌙' : '☀️';
+    }
+    updateIcon();
+    btn.addEventListener('click', () => {
+      const isLight = root.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        root.removeAttribute('data-theme');
+        localStorage.setItem('iotwx_theme', 'dark');
+      } else {
+        root.setAttribute('data-theme', 'light');
+        localStorage.setItem('iotwx_theme', 'light');
+      }
+      updateIcon();
+    });
+  })();
+</script>
+
+<script>
+  (function () {
+    if (window.parent === window) return; // standalone visit, not embedded
+
+    var ALLOWED_PARENT_ORIGINS = [
+      "https://ncar.github.io",   // production docs site
+      "http://127.0.0.1:8000",    // local mkdocs serve
+      "http://localhost:8000"     // local mkdocs serve, alt hostname
+    ];
+
+    var referrerOrigin = document.referrer ? new URL(document.referrer).origin : null;
+    var PARENT_ORIGIN = ALLOWED_PARENT_ORIGINS.indexOf(referrerOrigin) !== -1 ? referrerOrigin : null;
+
+    if (!PARENT_ORIGIN) return; // unrecognized embedder — don't send height anywhere
+
+    function reportHeight() {
+      var height = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight
+      );
+      window.parent.postMessage({ type: "mesonet-flasher-resize", height: height }, PARENT_ORIGIN);
+    }
+
+    window.addEventListener("load", function () {
+      reportHeight();
+      setTimeout(reportHeight, 300);
+    });
+    window.addEventListener("resize", reportHeight);
+
+    new ResizeObserver(reportHeight).observe(document.documentElement);
+  })();
+</script>
+
+<script>
+  // ── Arrive from the questionnaire plan: /flash-wizard/index.html?device=esp32|rp2040&link=wifi|poe|cell|lora&from=plan
+  // Only preselects the hardware and explains why. Flashing logic is untouched.
+  (function () {
+    const q = new URLSearchParams(window.location.search);
+    const device = q.get('device');
+    if (device !== 'esp32' && device !== 'rp2040') return;
+    const link = q.get('link');
+    const fromPlan = q.get('from') === 'plan';
+
+    const WHY = {
+      esp32: {
+        wifi: 'You chose Wi-Fi, so your plan uses the M5Stack Atom Lite.',
+        poe: 'You chose a network cable that also powers it, so your plan uses the M5Stack Atom Lite with the PoE base. Pick "Ethernet / PoE HAT" below.',
+        cell: 'You chose a cellular SIM, so your plan uses the M5Stack Atom Lite with the NB-IoT base.',
+        lora: 'You chose radio between stations, so your plan uses the M5Stack Atom Lite with the LoRa base.',
+        _: 'Your plan uses the M5Stack Atom Lite.'
+      },
+      rp2040: {
+        lora: 'You chose radio between stations, so your plan uses the Adafruit Feather RP2040 with the RFM95 LoRa radio.',
+        _: 'Your plan uses the Adafruit Feather RP2040 with LoRa.'
+      }
+    };
+
+    // Only override a returning visitor's saved device when the plan asks for something else.
+    if (selectedDevice !== device) selectDevice(device);
+
+    const other = device === 'esp32' ? pickRp2040 : pickEsp32;
+    const chosen = device === 'esp32' ? pickEsp32 : pickRp2040;
+    other.classList.add('not-recommended');
+    chosen.classList.remove('not-recommended');
+    const tag = document.createElement('span');
+    tag.className = 'device-tag';
+    tag.textContent = fromPlan ? 'Your plan' : 'Recommended';
+    chosen.insertBefore(tag, chosen.querySelector('.device-icon'));
+
+    const why = (WHY[device][link] || WHY[device]._);
+    const banner = document.createElement('div');
+    banner.className = 'plan-banner';
+    banner.innerHTML =
+      '<div><span class="eyebrow">' + (fromPlan ? 'From your plan' : 'Recommended path') + '</span>' +
+      '<strong></strong> <span>You can still pick the other board below if your hardware differs.</span>' +
+      (fromPlan ? ' <a href="/plan">Back to your plan</a>' : '') + '</div>';
+    banner.querySelector('strong').textContent = why;
+    document.querySelector('.device-picker').before(banner);
+
+    // PoE plans: default the Atom Lite to Ethernet unless a saved/uploaded config already chose.
+    if (device === 'esp32' && link === 'poe' && !(saved.device === 'esp32' && saved.config)) {
+      const sel = document.getElementById('esp_use_wifi');
+      if (sel) { sel.value = '0'; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+    }
+  })();
+</script>
+<script>
+  // Radio (LoRa) plans also need a Raspberry Pi gateway: add its step to the bar when the saved plan is one.
+  (function () {
+    try {
+      const draft = JSON.parse(localStorage.getItem('openiotwx-draft-v3') || localStorage.getItem('openiotwx-draft-v1') || 'null');
+      const link = draft && draft.answers && draft.answers.link;
+      if (link !== 'lora' && link !== 'ham') return;
+      const flash = Array.from(document.querySelectorAll('.steps .step')).find(function (el) { return /Flash/.test(el.textContent); });
+      if (!flash) return;
+      const divider = document.createElement('div');
+      divider.className = 'step-divider';
+      const pi = document.createElement('a');
+      pi.className = 'step';
+      pi.href = '/raspberry-pi';
+      pi.title = 'Your plan uses radio, so a Raspberry Pi gateway hears the stations';
+      pi.innerHTML = '<div class="step-num">\u03c0</div>Raspberry Pi gateway';
+      flash.after(divider, pi);
+    } catch (e) { /* the bar still works without it */ }
+  })();
+</script>
+<script>
+  // Phone menu: the links collapse behind a three-line button, as on the main site.
+  (function () {
+    const header = document.querySelector('header.site-header');
+    const btn = document.getElementById('menuBtn');
+    if (!header || !btn) return;
+    const bars = btn.querySelector('.bars');
+    const cross = btn.querySelector('.cross');
+    function set(open) {
+      header.classList.toggle('menu-open', open);
+      btn.setAttribute('aria-expanded', String(open));
+      btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+      bars.style.display = open ? 'none' : '';
+      cross.style.display = open ? '' : 'none';
+    }
+    btn.addEventListener('click', function () { set(!header.classList.contains('menu-open')); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') set(false); });
+    window.matchMedia('(min-width: 1024px)').addEventListener('change', function () { set(false); });
+  })();
+</script>
+<script>
+  // Same account controls as the rest of the site: ask the same session endpoint, then show
+  // "Sign in" or "My system" + "Sign out" in the header's place.
+  (function () {
+    var slot = document.getElementById('acct');
+    if (!slot) return;
+    var token = null;
+    try { token = sessionStorage.getItem('grok-auth.bearer-token'); } catch (e) {}
+    var headers = { 'content-type': 'application/json' };
+    if (token) headers.Authorization = 'Bearer ' + token;
+    // The last answer is remembered, so the header never blinks while the session is checked.
+    var KEY = 'openiotwx-acct';
+    function show(inn) {
+      slot.innerHTML = inn
+        ? '<a class="nav-account" href="/account">My system</a><button type="button" class="nav-btn" id="signOutBtn">Sign out</button>'
+        : '<a class="nav-signin" href="/login?next=/account">Sign in</a>';
+      var out = document.getElementById('signOutBtn');
+      if (out) out.addEventListener('click', signOut);
+    }
+    function remember(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
+    function signedOut() { remember('out'); show(false); }
+    function signOut() {
+      fetch('/api/auth/sign-out', { method: 'POST', credentials: 'include', headers: headers, body: '{}' })
+        .catch(function () {})
+        .then(function () {
+          try { sessionStorage.removeItem('grok-auth.bearer-token'); } catch (e) {}
+          remember('out');
+          location.reload();
+        });
+    }
+    var cached = null;
+    try { cached = localStorage.getItem(KEY); } catch (e) {}
+    if (cached) show(cached === 'in');
+    fetch('/api/auth/get-session', { credentials: 'include', headers: headers })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) {
+        if (!s || !s.user) return signedOut();
+        remember('in');
+        show(true);
+      })
+      .catch(signedOut);
+  })();
+</script>
+</body>
+</html>

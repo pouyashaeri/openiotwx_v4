@@ -1,0 +1,116 @@
+# OpenIoTwx platform — one command:   docker compose up -d --build
+# Scale ingest/web:                   docker compose up -d --scale app=4
+# Add MQTT for stations that use it:  docker compose --profile mqtt up -d
+#
+# Everything is configured from .env (copy .env.example). Nothing else to edit.
+
+name: openiotwx
+
+services:
+  db:
+    image: timescale/timescaledb:2.17.2-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: iotwx
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: iotwx
+    command: >
+      postgres
+      -c max_connections=300
+      -c shared_buffers=${PG_SHARED_BUFFERS:-512MB}
+      -c synchronous_commit=off
+      -c wal_compression=on
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iotwx -d iotwx"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # synchronous_commit=off trades the last ~0.2 s of acknowledged commits on a
+    # hard crash for much higher write throughput; readings are re-sent by stations.
+
+  # One-shot: applies migrations/*.sql, then exits. Re-runs are no-ops.
+  migrate:
+    build: .
+    image: openiotwx-app
+    command: ["node", "scripts/migrate.mjs"]
+    environment:
+      DATABASE_URL: postgres://iotwx:${POSTGRES_PASSWORD}@db:5432/iotwx
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build: .
+    image: openiotwx-app
+    restart: unless-stopped
+    environment: &appenv
+      DATABASE_URL: postgres://iotwx:${POSTGRES_PASSWORD}@db:5432/iotwx
+      BETTER_AUTH_URL: ${PUBLIC_URL:-http://localhost}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      SUPERADMIN_EMAILS: ${SUPERADMIN_EMAILS:-}
+      CHORDS_ALLOW_PRIVATE: ${CHORDS_ALLOW_PRIVATE:-0}
+      HUB_TOKEN: ${HUB_TOKEN:-}
+      BOINC_PROJECT_URL: ${BOINC_PROJECT_URL:-}
+      BOINC_ACCOUNT_KEY: ${BOINC_ACCOUNT_KEY:-}
+      CIRRUS_ENABLED: ${CIRRUS_ENABLED:-0}
+      EJAM_URL: ${EJAM_URL:-https://api.ejanalysis.com}
+      INGEST_BRIDGE_TOKEN: ${INGEST_BRIDGE_TOKEN:-}
+      INGEST_MAX_BUFFER: ${INGEST_MAX_BUFFER:-100000}
+      PG_POOL_MAX: ${PG_POOL_MAX:-20}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    deploy:
+      replicas: ${APP_REPLICAS:-2}
+    stop_grace_period: 15s  # lets each replica flush its ingest buffer on SIGTERM
+
+  # Public entry point: TLS (automatic when PUBLIC_URL is a real https domain),
+  # and load balancing across every `app` replica.
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    depends_on:
+      - app
+
+  # ── optional: MQTT ingest ──────────────────────────────────────────────────
+  mosquitto:
+    profiles: ["mqtt"]
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./deploy/mosquitto:/mosquitto/config:ro
+      - mqttdata:/mosquitto/data
+
+  mqtt-bridge:
+    profiles: ["mqtt"]
+    image: openiotwx-app
+    restart: unless-stopped
+    command: ["node", "scripts/mqtt-bridge.mjs"]
+    environment:
+      MQTT_URL: mqtt://mosquitto:1883
+      MQTT_USER: bridge
+      MQTT_PASSWORD: ${MQTT_BRIDGE_PASSWORD:-}
+      APP_URL: http://proxy
+      INGEST_BRIDGE_TOKEN: ${INGEST_BRIDGE_TOKEN:?set INGEST_BRIDGE_TOKEN in .env to use MQTT}
+    depends_on:
+      - mosquitto
+      - proxy
+
+volumes:
+  dbdata:
+  caddydata:
+  mqttdata:

@@ -1,0 +1,10 @@
+<job_desc>
+  <!-- BOINC wrapper job: one forecast tile. -->
+  <task>
+    <application>run_tile.sh</application>
+    <command_line>--tile tile.json --init gfs_init.nc --checkpoint checkpoint.pt --out prediction.nc</command_line>
+    <stdout_filename>stdout.txt</stdout_filename>
+    <checkpoint_filename>checkpoint_state.txt</checkpoint_filename>
+    <fraction_done_filename>fraction_done.txt</fraction_done_filename>
+  </task>
+</job_desc>

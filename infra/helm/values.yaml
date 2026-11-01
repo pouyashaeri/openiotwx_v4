@@ -1,0 +1,64 @@
+# Same shape as mesonet-siparcs25/cloud/helm/values.yaml so a CIRRUS namespace that ran that
+# project needs only the image names and hostnames changed.
+app:
+  group: openiotwx
+  imagePullPolicy: Always
+  registry: hub.k8s.ucar.edu/openiotwx      # CIRRUS registry; any registry works
+  domain: openiotwx.k8s.ucar.edu           # ingress hosts become <service>.<domain>
+  tlsIssuer: letsencrypt-prod
+
+postgres:
+  image: timescale/timescaledb:2.17.2-pg16
+  storage: 20Gi
+  db: iotwx
+  user: iotwx
+  passwordSecret: openiotwx-db           # kubectl create secret generic openiotwx-db --from-literal=password=...
+
+mosquitto:
+  image: eclipse-mosquitto:2.0.20
+  mqttPort: 1883
+  wsPort: 9001
+  exposeMqtt: true                        # LoadBalancer for stations in the field
+
+databaseApi:
+  image: database-api:3.0.0
+  replicas: 1
+  cpu: 1
+  memory: 1Gi
+  corsOrigins: "https://pouyashaeri.github.io,https://openiotwx.k8s.ucar.edu"
+
+mqttListener:
+  image: mqtt-listener:3.0.0
+
+placeLoader:
+  image: place-loader:3.0.0
+  ejamUrl: https://api.ejanalysis.com
+
+metabase:
+  image: metabase/metabase:v0.54.4
+  memory: 2Gi
+  adminSecret: openiotwx-metabase        # keys: email, password
+
+metabaseOrch:
+  image: metabase-orch:3.0.0
+
+credit:
+  enabled: true
+  image: credit-runner:3.0.0
+  gpu: 1                                  # 0 for CPU-only
+  cpu: 8
+  memory: 32Gi
+  checkpointStorage: 40Gi
+  staticStorage: 20Gi
+  schedule: "0 */6 * * *"                 # CronJob: one rollout per GFS cycle, plus on-demand runs from the queue
+
+ipfs:
+  enabled: true
+  image: ipfs/kubo:v0.33.2
+  storage: 50Gi
+
+gdexPublisher:
+  enabled: true
+  image: gdex-publisher:3.0.0
+  dryRun: "1"
+  secret: openiotwx-gdex                  # keys: endpoint, token, collection

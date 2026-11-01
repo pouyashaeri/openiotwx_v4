@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IoTwx Mesonet — Flash Station</title>
+  <script>
+    (function() {
+      if (true) { // light only, like the rest of the site (its header has no theme toggle)
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --accent: #58a6ff; --accent2: #3fb950; --text: #e6edf3;
+      --muted: #8b949e; --danger: #f85149; --warn: #d29922; --radius: 8px;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --font-sans: 'Inter', system-ui, sans-serif;
+    }
+    :root[data-theme="light"] {
+      --bg: #ffffff; --surface: #f6f8fa; --border: #d0d7de;
+      --accent: #0969da; --accent2: #1a7f37; --text: #1f2328;
+      --muted: #656d76; --danger: #cf222e; --warn: #9a6700;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-sans); min-height: 100vh; transition: background 0.15s, color 0.15s; }
+    .theme-toggle {
+      margin-left: auto; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; width: 32px; height: 32px; display: flex;
+      align-items: center; justify-content: center; cursor: pointer;
+      font-size: 15px; transition: border-color 0.15s, background 0.15s;
+    }
+    .theme-toggle:hover { border-color: var(--accent); }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; align-items: center; gap: 12px; }
+    .logo { font-family: var(--font-mono); font-size: 13px; color: var(--accent); letter-spacing: 0.05em; }
+    .logo span { color: var(--accent2); }
+    header h1 { font-size: 15px; font-weight: 600; }
+    .steps { display: flex; align-items: center; padding: 20px max(16px, calc((100% - 64rem) / 2 + 16px)); border-bottom: 1px solid var(--border); background: var(--surface); }
+    .step { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+    .step.done { color: var(--accent2); }
+    .step.active { color: var(--text); }
+    .step-num { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; font-family: var(--font-mono); }
+    .step.done .step-num { border-color: var(--accent2); color: var(--accent2); background: rgba(63,185,80,0.1); }
+    .step.active .step-num { border-color: var(--accent); color: var(--accent); background: rgba(88,166,255,0.1); }
+    .step-divider { flex: 1; height: 1px; background: var(--border); margin: 0 16px; max-width: 48px; }
+    .step-back { margin-left: auto; font-size: 12px; color: var(--muted); text-decoration: none; }
+    .step-back:hover { color: var(--text); }
+    main { max-width: 64rem; margin: 0 auto; padding: 40px 16px 80px; }
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .page-sub { font-size: 14px; color: var(--muted); margin-bottom: 36px; line-height: 1.5; }
+    .device-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.3); border-radius: 20px; padding: 3px 10px; margin-bottom: 14px; }
+    .config-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 28px; display: flex; align-items: center; gap: 12px; }
+    .config-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); flex-shrink: 0; }
+    .config-info { flex: 1; }
+    .config-name { font-size: 14px; font-weight: 600; }
+    .config-email { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .config-edit { font-size: 12px; color: var(--accent); text-decoration: none; flex-shrink: 0; }
+    .config-edit:hover { text-decoration: underline; }
+    .no-config { background: var(--surface); border: 1px solid var(--warn); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 28px; font-size: 14px; color: var(--warn); display: flex; align-items: center; gap: 10px; }
+    .flash-steps { display: flex; flex-direction: column; gap: 16px; margin-bottom: 32px; }
+    .flash-step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: flex; gap: 16px; align-items: flex-start; }
+    .flash-step.complete { border-color: var(--accent2); }
+    .flash-step.active { border-color: var(--accent); }
+    .fstep-num { width: 28px; height: 28px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-family: var(--font-mono); flex-shrink: 0; margin-top: 2px; color: var(--muted); }
+    .flash-step.complete .fstep-num { background: rgba(63,185,80,0.15); color: var(--accent2); }
+    .flash-step.active .fstep-num { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .fstep-body { flex: 1; }
+    .fstep-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .fstep-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .fstep-action { margin-top: 14px; }
+    .btn-primary { background: var(--accent); color: #0d1117; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; padding: 10px 24px; cursor: pointer; font-family: var(--font-sans); transition: opacity 0.15s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-weight: 500; padding: 8px 18px; cursor: pointer; font-family: var(--font-sans); transition: border-color 0.15s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .status-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+    .badge-ok { background: rgba(63,185,80,0.1); color: var(--accent2); border: 1px solid rgba(63,185,80,0.3); }
+    .badge-wait { background: rgba(88,166,255,0.1); color: var(--accent); border: 1px solid rgba(88,166,255,0.3); }
+    .badge-err { background: rgba(248,81,73,0.1); color: var(--danger); border: 1px solid rgba(248,81,73,0.3); }
+    .progress-bar-wrap { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; height: 8px; margin-top: 10px; overflow: hidden; }
+    .progress-bar { background: var(--accent); height: 100%; width: 0%; transition: width 0.2s; }
+    .how-to { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-top: 24px; }
+    .how-to h3 { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .how-to ol { padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+    .how-to li { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .how-to li strong { color: var(--text); }
+    .code { font-family: var(--font-mono); background: var(--bg); padding: 1px 6px; border-radius: 4px; font-size: 12px; color: var(--accent); }
+    .spinner { width: 14px; height: 14px; border: 2px solid rgba(13,17,23,0.3); border-top-color: #0d1117; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .serial-monitor { background: #010409; border: 1px solid var(--border); border-radius: var(--radius); margin-top: 24px; overflow: hidden; width: 100%; }
+    .serial-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .serial-title { font-size: 13px; font-weight: 600; }
+    .serial-controls { display: flex; align-items: center; gap: 8px; }
+    .serial-controls select { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; padding: 5px 8px; font-family: var(--font-mono); cursor: pointer; outline: none; }
+    .serial-output { height: 260px; overflow-y: auto; padding: 12px 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: #7ee787; white-space: pre-wrap; word-break: break-all; }
+    .serial-hint { color: var(--muted); font-style: italic; }
+    .serial-line-info { color: #7ee787; }
+    .serial-line-debug { color: #8b949e; }
+    .serial-line-warn { color: #d29922; }
+    .serial-line-error { color: #f85149; }
+
+    .device-flow { display: none; }
+    .device-flow.active { display: block; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="theme.css" />
+  <script src="dialog.js"></script>
+  <script src="header.js" defer></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="site-logo">
+      <span class="site-logo-mark"><span></span></span>
+      <span class="site-logo-text">openiotwx<em>/</em></span>
+    </a>
+    <nav class="site-nav" id="siteNav" aria-label="Primary">
+      <a href="/wizard">Wizard</a>
+      <a href="/plan">Plan</a>
+      <a href="/analysis">Analysis</a>
+      <a href="/forecast">Forecast</a>
+      <a href="/community">Community</a>
+      <a href="/library">Library</a>
+      <a href="/map">Map</a>
+      <a href="/flash-wizard/index.html" aria-current="page" class="active">Flash</a>
+      <span class="nav-sep" aria-hidden="true"></span>
+      <span id="acct" style="display:contents"></span>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark mode" type="button" hidden>🌙</button>
+    </nav>
+    <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="siteNav">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bars" d="M3 6H19M3 11H19M3 16H19"/><path class="cross" d="M4 4L18 18M18 4L4 18" style="display:none"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="steps">
+  <a class="step done" href="index.html"><div class="step-num">✓</div>Configure</a>
+  <div class="step-divider"></div>
+  <div class="step active"><div class="step-num">2</div>Flash</div>
+  <div class="step-divider"></div>
+  <a class="step" href="/deploy" title="After flashing: set the station up and publish its data"><div class="step-num">3</div>Deploy and Publish</a>
+  <div class="step-divider"></div>
+  <a class="step" href="/track" title="Watch the station's data and run a forecast"><div class="step-num">4</div>Track and Forecast</a>
+  <a href="index.html" class="step-back">← Edit config</a>
+</div>
+
+<main>
+  <div class="page-title">Flash your station</div>
+  <p class="page-sub" id="pageSub">Complete firmware and configuration setup directly in your browser.</p>
+
+  <div id="configSummary"></div>
+
+  <!-- ══════════════ RP2040 FLOW (unchanged UF2 + LittleFS config) ══════════════ -->
+  <div class="device-flow" id="rp2040Flow">
+    <div class="flash-steps">
+      <div class="flash-step active" id="rp_step1">
+        <div class="fstep-num">1</div>
+        <div class="fstep-body">
+          <div class="fstep-title">Enter BOOTSEL mode</div>
+          <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:nowrap;align-items:flex-start;">
+          <div style="flex:3 1 0;min-width:0;">
+            <img
+              src="assets/bootsel.jpg"
+              alt="BOOTSEL button location"
+              style="border-radius:6px;border:1px solid var(--border);width:100%;max-height:200px;object-fit:cover;display:block;"
+            />
+            <div class="fstep-desc" style="margin-top:5px;">
+              Hold the <strong>BOOTSEL</strong> button on your Feather, plug in the USB cable,
+              then release. A drive named <span class="code">RPI-RP2</span> will appear in File Explorer.
+            </div>
+          </div>
+
+          <div style="flex:1 1 0;min-width:0;">
+            <img
+              src="assets/explorer.jpg"
+              alt="RPI-RP2 drive in File Explorer"
+              style="border-radius:6px;border:1px solid var(--border);width:100%;max-height:200px;object-fit:cover;display:block;"
+            />
+            <p style="font-size:12px;color:var(--muted);margin-top:6px;">
+              The RPI-RP2 drive appears in your file explorer.
+            </p>
+          </div>
+        </div>
+          <div class="fstep-action" id="bootselStatus">
+            <span class="status-badge badge-wait">⏳ Waiting for RPI-RP2…</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flash-step" id="rp_step2">
+        <div class="fstep-num">2</div>
+        <div class="fstep-body">
+          <div class="fstep-title">Flash unchanged firmware</div>
+          <div class="fstep-desc">Click below and select the <span class="code">RPI-RP2</span> drive. The browser writes the official firmware directly—there is no manual download or binary patching.</div>
+          <div class="fstep-action">
+            <button class="btn-primary" id="rpFlashBtn" disabled>⚡ Select RPI-RP2 &amp; flash</button>
+            <div id="rpFlashStatus" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flash-step" id="rp_step3">
+        <div class="fstep-num">3</div>
+        <div class="fstep-body">
+          <div class="fstep-title">Save configuration to LittleFS</div>
+          <div class="fstep-desc">Wait for the <span class="code">RPI-RP2</span> drive to disappear and the board to restart. Then click below, select the RP2040 serial device, and the browser will send the form values to <span class="code">/config.json</span>.</div>
+          <div class="fstep-action">
+            <button class="btn-primary" id="rpProvisionBtn" disabled>🔌 Connect &amp; save configuration</button>
+            <div id="rpProvisionStatus" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="serial-monitor">
+      <div class="serial-header">
+        <span class="serial-title">📟 RP2040 setup log</span>
+        <div class="serial-controls">
+          <button class="btn-secondary" id="autoScrollBtn" title="Toggle auto-scroll" style="padding:5px 10px;font-size:11px;border-color:var(--accent2);color:var(--accent2);">⬇ Auto</button>
+          <button class="btn-secondary" id="copySerial" title="Copy all output" style="padding:5px 10px;font-size:11px;">⎘ Copy</button>
+          <button class="btn-secondary" id="clearSerial" style="padding:5px 10px;font-size:11px;">✕ Clear</button>
+        </div>
+      </div>
+      <div class="serial-output" id="serialOutput">
+        <span class="serial-hint">Flashing and configuration messages will appear here.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ ESP32 FLOW (Web Serial esptool-js) ══════════════ -->
+  <div class="device-flow" id="esp32Flow">
+    <div class="flash-steps">
+      <div class="flash-step active" id="esp_step1">
+        <div class="fstep-num">1</div>
+        <div class="fstep-body">
+          <div class="fstep-title">Connect your board</div>
+          <div class="fstep-desc" id="espConnectInstructions">Plug the Atom Lite in via USB-C.</div>
+          <div class="fstep-action">
+            <button class="btn-primary" id="espConnectBtn">🔌 Connect device</button>
+            <div id="espConnectStatus" style="margin-top:10px;font-size:13px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flash-step" id="esp_step2">
+        <div class="fstep-num">2</div>
+        <div class="fstep-body">
+          <div class="fstep-title">Flash unchanged firmware</div>
+          <div class="fstep-desc">Writes the bootloader, partition table, boot application, and unchanged application image. Takes about 30–60 seconds.</div>
+          <div class="fstep-action">
+            <button class="btn-primary" id="espFlashBtn" disabled>⚡ Flash firmware</button>
+            <div id="espFlashStatus" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
+            <div class="progress-bar-wrap" id="espProgressWrap" style="display:none;">
+              <div class="progress-bar" id="espProgressBar"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flash-step" id="esp_step3">
+        <div class="fstep-num">3</div>
+        <div class="fstep-body">
+          <div class="fstep-title">Save configuration to LittleFS</div>
+          <div class="fstep-desc">After the board restarts, the browser sends your configuration over USB serial. The firmware validates it, creates <span class="code">/config.json</span>, restarts, and verifies the saved file.</div>
+          <details id="espProvisionRecovery" style="margin-top:12px;">
+            <summary style="font-size:12px;color:var(--muted);cursor:pointer;">Already flashed? Retry configuration</summary>
+            <div class="fstep-action">
+              <button class="btn-secondary" id="espRetryProvisionBtn">Connect & save configuration</button>
+            </div>
+          </details>
+          <div id="espProvisionStatus" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="serial-monitor">
+      <div class="serial-header"><span class="serial-title">📟 Flash Log</span></div>
+      <div class="serial-output" id="espOutput">
+        <span class="serial-hint">Connect your board to see flashing progress here.</span>
+      </div>
+    </div>
+
+    <div class="how-to" id="atomBootHelp">
+      <h3>Optional: View the complete boot output</h3>
+
+      <div style="
+        display:flex;
+        gap:24px;
+        align-items:flex-start;
+        flex-wrap:wrap;
+      ">
+        <img
+          src="assets/atomlite.jpg"
+          alt="Reset button location on M5Stack Atom Lite"
+          style="
+            border-radius:6px;
+            border:1px solid var(--border);
+            width:320px;
+            max-width:100%;
+            height:auto;
+            flex-shrink:0;
+          "
+        />
+
+        <p style="
+          font-size:13px;
+          color:var(--muted);
+          line-height:1.6;
+          flex:1;
+          min-width:220px;
+          margin:0;
+        ">
+          <strong style="color:var(--text);">This step is not required for flashing or configuration.</strong>
+          The Atom Lite restarts automatically after saving the configuration.
+          If you want to inspect the complete startup log for troubleshooting,
+          press the <strong style="color:var(--text);">reset button</strong> shown
+          in the image. This will restart the board without erasing the firmware
+          or the saved <span class="code">/config.json</span>.
+        </p>
+      </div>
+    </div>
+
+    <div class="serial-monitor" style="margin-top:16px;">
+      <div class="serial-header">
+        <span class="serial-title">📟 Serial Monitor</span>
+        <div class="serial-controls">
+          <select id="espBaudRate">
+            <option value="9600">9600</option>
+            <option value="19200">19200</option>
+            <option value="38400">38400</option>
+            <option value="57600">57600</option>
+            <option value="115200" selected>115200</option>
+            <option value="230400">230400</option>
+          </select>
+          <button class="btn-secondary" id="espAutoScrollBtn" title="Toggle auto-scroll" style="padding:5px 10px;font-size:11px;border-color:var(--accent2);color:var(--accent2);">⬇ Auto</button>
+          <button class="btn-secondary" id="espCopySerial" title="Copy all output" style="padding:5px 10px;font-size:11px;">⎘ Copy</button>
+          <button class="btn-secondary" id="espClearSerial" style="padding:5px 10px;font-size:11px;">✕ Clear</button>
+          <button class="btn-secondary" id="espConnectSerial">Connect</button>
+        </div>
+      </div>
+      <div class="serial-output" id="espSerialOutput">
+        <span class="serial-hint">After flashing, click Connect to view your board's boot output.</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="next-steps" aria-labelledby="nextTitle" style="margin-top:32px;padding:18px 20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);">
+    <div id="nextTitle" style="font-size:15px;font-weight:600;">When the board is flashed</div>
+    <p style="margin-top:6px;font-size:13px;color:var(--muted);">
+      Power it where it will live. Next, give it this site's address and key, watch it report in, and choose who can see it.
+    </p>
+    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;">
+      <a class="btn-primary" href="/deploy" style="text-decoration:none;display:inline-flex;align-items:center;">Next: Deploy and Publish</a>
+      <a id="piNext" class="btn-secondary" href="/raspberry-pi" style="text-decoration:none;display:none;align-items:center;">Radio plan: set up the Raspberry Pi gateway</a>
+    </div>
+  </section>
+
+</main>
+
+<script type="module">
+  import {
+    fetchRp2040Firmware,
+    flashRP2040viaFilesystem,
+    getRp2040BrowserError,
+    provisionRP2040,
+    verifyRP2040Config,
+  } from './js/rp2040-flasher.js?v=8';
+
+  const setup  = JSON.parse(sessionStorage.getItem('iotwx_setup') || '{}');
+  const device = setup.device;
+  const config = setup.config;
+
+  const isGenericRp2040Test =
+    new URLSearchParams(window.location.search).get('rp2040') === 'generic';
+
+  const isGenericEsp32CamTest =
+    new URLSearchParams(window.location.search).get('esp32') === 'generic';
+
+  const rp2040FirmwareUrl = isGenericRp2040Test
+    ? 'firmware/generic_rp2040_test.uf2'
+    : 'firmware/mesonet_rp2040.uf2';
+
+  const summaryEl = document.getElementById('configSummary');
+  const pageSub   = document.getElementById('pageSub');
+  const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  })[character]);
+
+  if (!device || !config) {
+    summaryEl.innerHTML = `
+      <div class="no-config">
+        ⚠ No config found. <a href="index.html" style="color:var(--warn);margin-left:6px;">← Go back and fill in your details</a>
+      </div>`;
+  } else if (device === 'rp2040') {
+    pageSub.textContent = 'Flash one unchanged firmware image, then save your configuration separately in LittleFS.';
+    const si = config.station_info;
+    summaryEl.innerHTML = `
+      <span class="device-badge">${
+        isGenericRp2040Test
+          ? '🧪 Generic RP2040 test'
+          : '📡 RP2040 LoRa'
+      }</span>
+      <div class="config-card">
+        <div class="config-dot"></div>
+        <div class="config-info">
+          <div class="config-name">${escapeHtml(si.firstname)} ${escapeHtml(si.lastname)} — ${escapeHtml(si.organization || 'No org')}</div>
+          <div class="config-email">${escapeHtml(si.email)} · ${escapeHtml(si.latitude || 0)}°, ${escapeHtml(si.longitude || 0)}°</div>
+        </div>
+        <a href="index.html" class="config-edit">Edit →</a>
+      </div>`;
+    document.getElementById('rp2040Flow').classList.add('active');
+    initRp2040Flow();
+  } else if (device === 'esp32') {
+    pageSub.textContent = isGenericEsp32CamTest
+      ? 'Test unchanged ESP32 firmware flashing and LittleFS configuration on an ESP32-CAM.'
+      : 'Flash unchanged firmware, then save your configuration separately in LittleFS.';
+    summaryEl.innerHTML = `
+      <span class="device-badge">${
+        isGenericEsp32CamTest
+          ? '🧪 Generic ESP32-CAM test'
+          : '📶 ESP32 Atom Lite'
+      }</span>
+      <div class="config-card">
+        <div class="config-dot"></div>
+        <div class="config-info">
+          <div class="config-name">${escapeHtml(config.id)}</div>
+          <div class="config-email">${escapeHtml(config.topic)} · broker ${escapeHtml(config.mq_ip)}:${escapeHtml(config.mq_port)}</div>
+        </div>
+        <a href="index.html" class="config-edit">Edit →</a>
+      </div>`;
+    document.getElementById('esp32Flow').classList.add('active');
+    if (isGenericEsp32CamTest) {
+      document.getElementById('atomBootHelp').style.display = 'none';
+      document.getElementById('espConnectInstructions').innerHTML =
+        'Connect the ESP32-CAM through its USB programmer or USB-to-UART adapter. ' +
+        'With a basic adapter, connect <span class="code">GPIO0</span> to GND and reset the board before connecting.';
+    }
+    initEsp32Flow();
+  }
+
+  // ══════════════ RP2040 flow logic ══════════════
+  function initRp2040Flow() {
+    const step1 = document.getElementById('rp_step1');
+    const step2 = document.getElementById('rp_step2');
+    const step3 = document.getElementById('rp_step3');
+    const bootselStatus = document.getElementById('bootselStatus');
+    const flashBtn = document.getElementById('rpFlashBtn');
+    const flashStatus = document.getElementById('rpFlashStatus');
+    const provisionBtn = document.getElementById('rpProvisionBtn');
+    const provisionStatus = document.getElementById('rpProvisionStatus');
+    const output = document.getElementById('serialOutput');
+    const autoScrollBtn = document.getElementById('autoScrollBtn');
+    const copyBtn = document.getElementById('copySerial');
+    const clearBtn = document.getElementById('clearSerial');
+    let autoScroll = true;
+
+    function setStatus(element, kind, message) {
+      element.replaceChildren();
+      const badge = document.createElement('span');
+      badge.className = `status-badge badge-${kind}`;
+      badge.textContent = message;
+      element.appendChild(badge);
+    }
+
+    function appendLine(line, className = '') {
+      if (!line.trim()) return;
+      if (output.querySelector('.serial-hint')) output.replaceChildren();
+
+      const div = document.createElement('div');
+      if (className) {
+        div.className = className;
+      } else if (line.includes('ERROR') || line.includes('[error]')) {
+        div.className = 'serial-line-error';
+      } else if (line.includes('[warn]')) {
+        div.className = 'serial-line-warn';
+      } else if (line.includes('[debug]')) {
+        div.className = 'serial-line-debug';
+      } else {
+        div.className = 'serial-line-info';
+      }
+      div.textContent = line;
+      output.appendChild(div);
+      if (autoScroll) output.scrollTop = output.scrollHeight;
+    }
+
+    autoScrollBtn.addEventListener('click', () => {
+      autoScroll = !autoScroll;
+      autoScrollBtn.style.borderColor = autoScroll ? 'var(--accent2)' : 'var(--border)';
+      autoScrollBtn.style.color = autoScroll ? 'var(--accent2)' : 'var(--muted)';
+      autoScrollBtn.textContent = autoScroll ? '⬇ Auto' : '⏸ Auto';
+    });
+    copyBtn.addEventListener('click', () => {
+      const text = Array.from(output.querySelectorAll('div')).map(d => d.textContent).join('\n');
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.textContent = '✓ Copied';
+        setTimeout(() => { copyBtn.textContent = '⎘ Copy'; }, 1500);
+      });
+    });
+    clearBtn.addEventListener('click', () => {
+      output.innerHTML = '<span class="serial-hint">Flashing and configuration messages will appear here.</span>';
+    });
+
+    const browserError = getRp2040BrowserError();
+    if (browserError) {
+      setStatus(flashStatus, 'err', `✗ ${browserError}`);
+      appendLine(`[error]: ${browserError}`, 'serial-line-error');
+
+      if (window.top !== window.self) {
+        const openButton = document.createElement('button');
+        openButton.type = 'button';
+        openButton.className = 'btn-secondary';
+        openButton.style.marginTop = '10px';
+        openButton.textContent = '↗ Open flasher in new tab';
+        openButton.addEventListener('click', () => {
+          window.open(window.location.href, '_blank');
+        });
+        flashStatus.appendChild(document.createElement('br'));
+        flashStatus.appendChild(openButton);
+      }
+      return;
+    }
+
+    bootselStatus.innerHTML = `<button class="btn-secondary" id="confirmBootsel">✓ RPI-RP2 is visible — continue</button>`;
+    document.getElementById('confirmBootsel').addEventListener('click', () => {
+      setStatus(bootselStatus, 'ok', '✓ Board is in BOOTSEL mode');
+      step1.classList.remove('active');
+      step1.classList.add('complete');
+      step2.classList.add('active');
+      flashBtn.disabled = false;
+    });
+
+    flashBtn.addEventListener('click', async () => {
+      flashBtn.disabled = true;
+      flashBtn.innerHTML =
+        `<span class="spinner"></span> Loading firmware…`;
+
+      setStatus(
+        flashStatus,
+        'wait',
+        'Loading and validating the unchanged UF2…'
+      );
+
+      appendLine('[info]: Loading unchanged RP2040 firmware');
+
+      try {
+        const firmware =
+          await fetchRp2040Firmware(rp2040FirmwareUrl);
+
+        flashBtn.innerHTML =
+          `<span class="spinner"></span> Select RPI-RP2…`;
+
+        setStatus(
+          flashStatus,
+          'wait',
+          'Select the RPI-RP2 drive in the folder picker.'
+        );
+
+        await flashRP2040viaFilesystem(
+          firmware,
+          (written, total) => {
+            if (written === total) {
+              appendLine('[info]: UF2 write completed');
+            }
+          }
+        );
+
+        flashBtn.innerHTML = '✓ Firmware flashed';
+        flashBtn.style.background = 'var(--accent2)';
+
+        setStatus(
+          flashStatus,
+          'ok',
+          '✓ Firmware written; the board is restarting'
+        );
+
+        step2.classList.remove('active');
+        step2.classList.add('complete');
+        step3.classList.add('active');
+
+        setStatus(
+          provisionStatus,
+          'wait',
+          'Wait for the RP2040 application to start…'
+        );
+
+        // Only wait here. Do not request a serial port automatically.
+        await new Promise(resolve => setTimeout(resolve, 15000));
+
+        provisionBtn.disabled = false;
+
+        setStatus(
+          provisionStatus,
+          'wait',
+          'Ready—click below and select the RP2040 serial device.'
+        );
+      } catch (error) {
+        flashBtn.disabled = false;
+        flashBtn.textContent = '⚡ Select RPI-RP2 & flash';
+
+        setStatus(
+          flashStatus,
+          'err',
+          `✗ ${error.message}`
+        );
+
+        appendLine(
+          `[error]: ${error.message}`,
+          'serial-line-error'
+        );
+      }
+    });
+
+    provisionBtn.addEventListener('click', async () => {
+      let configurationAccepted = false;
+      provisionBtn.disabled = true;
+      provisionBtn.innerHTML = `<span class="spinner"></span> Connecting…`;
+      setStatus(provisionStatus, 'wait', 'Select the RP2040 serial device.');
+      appendLine('[info]: Requesting serial connection');
+
+      try {
+        const deviceInfo = await provisionRP2040(config, {
+          baudRate: 115200,
+          timeoutMs: 20000,
+          onLine: appendLine,
+          allowAnyUsbDevice: isGenericRp2040Test,
+        });
+        configurationAccepted = true;
+
+        provisionBtn.innerHTML = `<span class="spinner"></span> Verifying reboot…`;
+        setStatus(provisionStatus, 'wait', 'Configuration saved; verifying it after reboot…');
+        appendLine('[info]: Device accepted configuration and is rebooting');
+
+        await verifyRP2040Config(deviceInfo, {
+          timeoutMs: 60000,
+          onLine: appendLine,
+        });
+
+        provisionBtn.textContent = '✓ Configuration verified';
+        provisionBtn.style.background = 'var(--accent2)';
+        setStatus(provisionStatus, 'ok', '✓ config.json saved and loaded from LittleFS');
+        step3.classList.remove('active');
+        step3.classList.add('complete');
+        pageSub.textContent = 'Setup complete. The firmware and configuration are stored separately.';
+        appendLine('[info]: Device confirmed /config.json after reboot');
+      } catch (error) {
+        if (configurationAccepted) {
+          provisionBtn.textContent = '✓ Configuration sent';
+          setStatus(
+            provisionStatus,
+            'err',
+            `Configuration was accepted, but reboot verification failed: ${error.message}`
+          );
+        } else {
+          provisionBtn.disabled = false;
+          provisionBtn.textContent = '🔌 Connect & save configuration';
+          setStatus(provisionStatus, 'err', `✗ ${error.message}`);
+        }
+        appendLine(`[error]: ${error.message}`, 'serial-line-error');
+      }
+    });
+  }
+
+  // ══════════════ ESP32 flow logic ══════════════
+  function initEsp32Flow() {
+    const espOutput = document.getElementById('espOutput');
+    function espLog(line, cls) {
+      const div = document.createElement('div');
+      if (cls) div.className = cls;
+      div.textContent = line;
+      espOutput.appendChild(div);
+      espOutput.scrollTop = espOutput.scrollHeight;
+    }
+    const espLoaderTerminal = {
+      clean() { espOutput.innerHTML = ''; },
+      writeLine(data) { espLog(data); },
+      write(data) { espLog(data); },
+    };
+
+    const connectBtn    = document.getElementById('espConnectBtn');
+    const connectStatus = document.getElementById('espConnectStatus');
+    const step1 = document.getElementById('esp_step1');
+    const step2 = document.getElementById('esp_step2');
+    const step3 = document.getElementById('esp_step3');
+    const flashBtn = document.getElementById('espFlashBtn');
+
+    let esploader, chip, device, transport;
+
+    connectBtn.addEventListener('click', async () => {
+      if (!navigator.serial) {
+        connectStatus.innerHTML = `<span class="status-badge badge-err">✗ Web Serial not supported — use Chrome or Edge</span>`;
+        return;
+      }
+      try {
+        connectBtn.disabled = true;
+        connectBtn.innerHTML = `<span class="spinner"></span> Connecting…`;
+
+        const { ESPLoader, Transport } = await import('https://cdn.jsdelivr.net/npm/esptool-js@0.5.6/bundle.js');
+        device = await navigator.serial.requestPort();
+        transport = new Transport(device, true);
+
+        esploader = new ESPLoader({
+          transport, baudrate: 115200, romBaudrate: 115200, terminal: espLoaderTerminal,
+        });
+
+        chip = await esploader.main();
+        espLog(`Connected: ${chip}`);
+
+        connectStatus.innerHTML = `<span class="status-badge badge-ok">✓ Connected — ${chip}</span>`;
+        connectBtn.innerHTML = `✓ Connected`;
+        step1.classList.remove('active');
+        step1.classList.add('complete');
+        step2.classList.add('active');
+        flashBtn.disabled = false;
+
+      } catch (e) {
+        connectStatus.innerHTML = `<span class="status-badge badge-err">✗ ${e.message}</span>`;
+        connectBtn.disabled = false;
+        connectBtn.innerHTML = `🔌 Connect device`;
+      }
+    });
+
+    const flashStatus  = document.getElementById('espFlashStatus');
+    const progressWrap = document.getElementById('espProgressWrap');
+    const progressBar  = document.getElementById('espProgressBar');
+    const provisionStatus = document.getElementById('espProvisionStatus');
+    const retryProvisionBtn = document.getElementById('espRetryProvisionBtn');
+    const provisionRecovery = document.getElementById('espProvisionRecovery');
+
+    const esp32FirmwareBase = isGenericEsp32CamTest
+      ? 'firmware/generic_esp32cam_test'
+      : 'firmware/mesonet_esp32';
+
+    const ESP32_FIRMWARE_IMAGES = Object.freeze([
+      { url: `${esp32FirmwareBase}_bootloader.bin`, address: 0x1000 },
+      { url: `${esp32FirmwareBase}_partitions.bin`, address: 0x8000 },
+      { url: `${esp32FirmwareBase}_boot_app0.bin`,  address: 0xE000 },
+      { url: `${esp32FirmwareBase}.bin`,            address: 0x10000 },
+    ]);
+
+    const delay = milliseconds =>
+      new Promise(resolve => setTimeout(resolve, milliseconds));
+
+    function toBinaryString(bytes) {
+      let result = '';
+      const chunkSize = 0x8000;
+      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        result += String.fromCharCode.apply(
+          null,
+          bytes.subarray(offset, offset + chunkSize)
+        );
+      }
+      return result;
+    }
+
+    async function fetchEsp32Images() {
+      const cacheBuster = Date.now();
+
+      return Promise.all(ESP32_FIRMWARE_IMAGES.map(async image => {
+        const response = await fetch(`${image.url}?v=${cacheBuster}`, {
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          throw new Error(`Firmware file not found (${response.status}): ${image.url}`);
+        }
+
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (bytes.length === 0) {
+          throw new Error(`Firmware file is empty: ${image.url}`);
+        }
+
+        return {
+          data: toBinaryString(bytes),
+          address: image.address,
+          size: bytes.length,
+        };
+      }));
+    }
+
+    function buildEsp32ProvisioningConfig(source) {
+      const document = {
+        iotwx_id: String(source.id ?? ''),
+        iotwx_topic: String(source.topic ?? ''),
+        iotwx_wifi_ssid: String(source.wifi_ssid ?? ''),
+        iotwx_wifi_pwd: String(source.wifi_pwd ?? ''),
+        iotwx_mq_ip: String(source.mq_ip ?? ''),
+        iotwx_mq_port: String(source.mq_port ?? '1883'),
+        iotwx_use_wifi: String(source.use_wifi ?? '1'),
+        iotwx_publish_interval: String(source.publish_interval ?? '2'),
+        iotwx_reset_interval: String(source.reset_interval ?? '360'),
+        iotwx_timezone: String(source.timezone ?? '21600'),
+        iotwx_gpio_config: String(source.gpio_config ?? 'A'),
+        iotwx_max_frequency: String(source.max_frequency ?? '80'),
+        iotwx_aspiration_spinup_time: String(source.aspiration_time ?? '10'),
+        iotwx_sensor: 'grove/i2c',
+        iotwx_local_config: '1',
+      };
+
+      const command = `IOTWX_CONFIG ${JSON.stringify(document)}\n`;
+      if (new TextEncoder().encode(command).byteLength > 2048) {
+        throw new Error('The complete ESP32 configuration exceeds 2048 bytes.');
+      }
+
+      return { document, command };
+    }
+
+    async function openEsp32SerialPort(port, baudRate = 115200) {
+      let lastError;
+
+      for (let attempt = 0; attempt < 20; attempt++) {
+        try {
+          await port.open({ baudRate });
+          try {
+            await port.setSignals({
+              dataTerminalReady: false,
+              requestToSend: false,
+            });
+          } catch (signalError) {
+            espLog(`Warning: could not release DTR/RTS (${signalError.message})`, 'serial-line-warn');
+          }
+          return;
+        } catch (error) {
+          lastError = error;
+          await delay(300);
+        }
+      }
+
+      throw new Error(`Could not reopen the ESP32 serial port: ${lastError?.message || 'unknown error'}`);
+    }
+
+    async function waitForEsp32Response(reader, state, expected, timeoutMs, ignoredErrors = []) {
+      const responses = Array.isArray(expected) ? expected : [expected];
+      let timeoutId;
+      const timeout = new Promise((resolve, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error(`Timed out waiting for ${responses.join(' or ')}.`)),
+          timeoutMs
+        );
+      });
+
+      try {
+        while (true) {
+          if (state.lines.length === 0) {
+            const { value, done } = await Promise.race([reader.read(), timeout]);
+            if (done) throw new Error('The ESP32 serial connection closed unexpectedly.');
+            state.buffer += state.decoder.decode(value, { stream: true });
+            const lines = state.buffer.split(/\r?\n/);
+            state.buffer = lines.pop() || '';
+            state.lines.push(...lines);
+          }
+          // A USB serial read can end in the middle of a line.
+          if (state.lines.length === 0) continue;
+          const line = state.lines.shift().trim();
+          if (!line) continue;
+          espLog(line);
+          const matched = responses.find(response => line.includes(response));
+          if (matched) return matched;
+          if (ignoredErrors.some(error => line.includes(error))) continue;
+          if (line.includes('IOTWX_CONFIG_ERROR')) {
+            throw new Error(`The ESP32 rejected the configuration: ${line}`);
+          }
+        }
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    async function provisionEsp32(port, sourceConfig) {
+      const { command } = buildEsp32ProvisioningConfig(sourceConfig);
+      await openEsp32SerialPort(port);
+
+      const writer = port.writable.getWriter();
+      const reader = port.readable.getReader();
+      const encoder = new TextEncoder();
+      const state = { decoder: new TextDecoder(), buffer: '', lines: [] };
+
+      try {
+        // Listen while probing. A boot message may already have passed before
+        // the browser opened the port, so also ask the firmware for status.
+        espLog('[info]: Waiting for ESP32 provisioning firmware');
+        const statusRequest = encoder.encode('IOTWX_CONFIG_STATUS\n');
+        let pendingProbe = null;
+        let probeError = null;
+        function probe() {
+          if (pendingProbe) return;
+          pendingProbe = writer.write(statusRequest)
+            .catch(error => { probeError = error; })
+            .finally(() => { pendingProbe = null; });
+        }
+        // On the ESP32-CAM the user has just reset the board. Give its READY
+        // message time to arrive before probing: a status command sent during
+        // boot can be truncated and later produce UNKNOWN_COMMAND.
+        let probeTimer = null;
+        const firstProbeTimer = isGenericEsp32CamTest
+          ? setTimeout(() => {
+              probe();
+              probeTimer = setInterval(probe, 1000);
+            }, 3000)
+          : null;
+        if (!isGenericEsp32CamTest) {
+          probe();
+          probeTimer = setInterval(probe, 1000);
+        }
+        let resetPromise = null;
+        // If the Atom Lite does not reply, reboot it into normal application
+        // mode using RTS while DTR stays released. The reader is already open.
+        const resetTimer = isGenericEsp32CamTest ? null : setTimeout(() => {
+          resetPromise = (async () => {
+            espLog('[info]: Restarting Atom Lite to enter provisioning mode');
+            try {
+              await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+              await delay(120);
+              await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+            } catch (signalError) {
+              espLog(`[warn]: Automatic reset unavailable: ${signalError.message}`);
+              try {
+                await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+              } catch (releaseError) {}
+            }
+          })();
+        }, 3000);
+        try {
+          await waitForEsp32Response(reader, state, [
+            'IOTWX_PROVISION_READY',
+            'IOTWX_CONFIG_ERROR NOT_LOADED',
+            'IOTWX_CONFIG_LOADED',
+          ], 30000);
+        } finally {
+          if (resetTimer !== null) clearTimeout(resetTimer);
+          if (firstProbeTimer !== null) clearTimeout(firstProbeTimer);
+          if (probeTimer !== null) clearInterval(probeTimer);
+          if (resetPromise) await resetPromise;
+          if (pendingProbe) await pendingProbe;
+        }
+        if (probeError) throw probeError;
+
+        await writer.write(encoder.encode(command));
+        espLog('[sent configuration to device]');
+        espLog('[info]: Waiting for IOTWX_CONFIG_OK');
+        // If READY arrived before the status reply, that older reply can
+        // appear here. A truncated probe from boot may also yield
+        // UNKNOWN_COMMAND. Neither is proof that the configuration write was
+        // rejected; require its own OK response before claiming success.
+        await waitForEsp32Response(reader, state, 'IOTWX_CONFIG_OK', 15000,
+          ['IOTWX_CONFIG_ERROR NOT_LOADED', 'IOTWX_CONFIG_LOADED',
+            'IOTWX_CONFIG_ERROR UNKNOWN_COMMAND']);
+
+        espLog('[info]: Device accepted configuration and is rebooting');
+
+        // Wait for the firmware's next startup before requesting verification.
+        espLog('[info]: Waiting for ESP32 provisioning firmware after reboot');
+        await waitForEsp32Response(reader, state, 'IOTWX_PROVISION_READY', 15000);
+        await writer.write(encoder.encode('IOTWX_CONFIG_STATUS\n'));
+        espLog('[sent configuration status request]');
+        await waitForEsp32Response(reader, state, 'IOTWX_CONFIG_LOADED', 10000);
+      } finally {
+        try { writer.releaseLock(); } catch (error) {}
+        try { await reader.cancel(); } catch (error) {}
+        try { reader.releaseLock(); } catch (error) {}
+        try { await port.close(); } catch (error) {}
+      }
+    }
+
+    retryProvisionBtn.addEventListener('click', async () => {
+      retryProvisionBtn.disabled = true;
+      try {
+        // requestPort must run in this click handler when the page was reloaded.
+        if (!device) device = await navigator.serial.requestPort();
+        provisionStatus.textContent = 'Connecting to the firmware…';
+        await provisionEsp32(device, config);
+        provisionStatus.innerHTML = '<span class="status-badge badge-ok">✓ Configuration saved and verified</span>';
+        step3.classList.remove('active');
+        step3.classList.add('complete');
+        provisionRecovery.hidden = true;
+      } catch (error) {
+        provisionStatus.textContent = `Configuration failed: ${error.message}`;
+        provisionRecovery.hidden = false;
+        provisionRecovery.open = true;
+        espLog(`Error: ${error.message}`, 'serial-line-error');
+      } finally {
+        retryProvisionBtn.disabled = false;
+      }
+    });
+
+    flashBtn.addEventListener('click', async () => {
+      if (!esploader) { await themedAlert('Connect the device first.'); return; }
+
+      flashBtn.disabled = true;
+      retryProvisionBtn.disabled = true;
+      if (isGenericEsp32CamTest) {
+        espLog('[info]: ESP32-CAM flasher v14 (automatic serial retry enabled)');
+      }
+      flashBtn.innerHTML = `<span class="spinner"></span> Loading firmware…`;
+      flashStatus.textContent = 'Loading unchanged firmware images…';
+      provisionStatus.textContent = '';
+      progressBar.style.width = '0%';
+      provisionRecovery.hidden = true;
+      provisionRecovery.open = false;
+
+      let firmwareWritten = false;
+      try {
+        const images = await fetchEsp32Images();
+        const totalBytes = images.reduce((sum, image) => sum + image.size, 0);
+        const completedBefore = images.map((_, index) =>
+          images.slice(0, index).reduce((sum, image) => sum + image.size, 0)
+        );
+
+        flashBtn.innerHTML = `<span class="spinner"></span> Flashing…`;
+        flashStatus.textContent = 'Writing the complete flash layout — do not disconnect…';
+        progressWrap.style.display = 'block';
+
+        await esploader.writeFlash({
+          fileArray: images.map(({ data, address }) => ({ data, address })),
+          flashSize: 'keep',
+          // A clean install prevents an old or incompatible filesystem from
+          // being mistaken for the configuration supplied in this session.
+          eraseAll: true,
+          compress: true,
+          reportProgress: (fileIndex, written, total) => {
+            const overallWritten = completedBefore[fileIndex] + written;
+            const pct = Math.min(100, Math.round((overallWritten / totalBytes) * 100));
+            progressBar.style.width = pct + '%';
+            flashStatus.textContent = `Writing to flash… ${pct}%`;
+          },
+        });
+        firmwareWritten = true;
+        // The flashing promise has completed, even if the progress callback
+        // stopped short of the final byte while esptool finished its cleanup.
+        progressBar.style.width = '100%';
+
+        flashStatus.innerHTML = `<span class="status-badge badge-ok">✓ Flash complete</span>`;
+        flashBtn.innerHTML = `✓ Flashed`;
+        step2.classList.remove('active');
+        step2.classList.add('complete');
+        step3.classList.add('active');
+
+        espLog('Flash complete. Resetting device…');
+        try {
+          await esploader.after('hard_reset');
+        } catch (resetErr) {
+          espLog(`Note: auto-reset failed (${resetErr.message}) — power-cycle the board manually.`, 'serial-line-warn');
+        }
+
+        // release the port so the serial monitor can reuse it
+        await new Promise(r => setTimeout(r, 300)); // let the reset sequence settle
+        let released = false;
+        try {
+          if (transport && typeof transport.disconnect === 'function') {
+            await transport.disconnect();
+          }
+          released = true;
+        } catch (e) {
+          espLog(`transport.disconnect() failed: ${e.message}`, 'serial-line-warn');
+        }
+        try {
+          await device.close();
+          released = true;
+        } catch (e) {
+          if ((e.message || '').includes('already closed')) {
+            // transport.disconnect() already released it — this is success, not a failure
+            released = true;
+          } else {
+            espLog(`Could not close port automatically: ${e.message}`, 'serial-line-warn');
+          }
+        }
+
+        if (!released) {
+          throw new Error('The flashing port could not be released for configuration.');
+        }
+
+        if (isGenericEsp32CamTest) {
+          provisionStatus.innerHTML = `<span class="status-badge badge-wait">Waiting for the ESP32-CAM to start normally…</span>`;
+          const ready = await themedConfirm(
+            'ESP32-CAM test: if GPIO0 is connected to GND, remove that jumper now. ' +
+            'Press RESET so the board starts the new firmware, then click OK.',
+            { title: 'Restart the ESP32-CAM', ok: 'OK, I did' }
+          );
+          if (!ready) {
+            throw new Error('ESP32-CAM restart confirmation was cancelled.');
+          }
+          await delay(500);
+        }
+
+        provisionStatus.innerHTML = `<span class="status-badge badge-wait">⏳ Saving configuration to LittleFS…</span>`;
+        espLog('[info]: Reconnecting for LittleFS configuration');
+        // Opening the USB programmer can reboot the CAM while the first
+        // command is being sent. A fresh serial connection is the same
+        // recovery that the manual Retry button performs; do it automatically
+        // for transient CAM errors without erasing or flashing a second time.
+        const maxProvisionAttempts = isGenericEsp32CamTest ? 3 : 1;
+        for (let attempt = 1; attempt <= maxProvisionAttempts; attempt++) {
+          try {
+            await provisionEsp32(device, config);
+            break;
+          } catch (provisionError) {
+            const transient = /UNKNOWN_COMMAND|Timed out waiting for|serial connection closed unexpectedly/i
+              .test(provisionError.message || '');
+            if (attempt === maxProvisionAttempts || !transient) throw provisionError;
+            espLog(`[warn]: Configuration attempt ${attempt} failed: ${provisionError.message}`,
+              'serial-line-warn');
+            espLog(`[info]: Retrying ESP32-CAM configuration without flashing again (${attempt + 1}/${maxProvisionAttempts})`);
+            provisionStatus.innerHTML = `<span class="status-badge badge-wait">⏳ Retrying configuration without flashing again…</span>`;
+            await delay(750 * attempt);
+          }
+        }
+
+        provisionStatus.innerHTML = `<span class="status-badge badge-ok">✓ Configuration saved and verified</span>`;
+        step3.classList.remove('active');
+        step3.classList.add('complete');
+        provisionRecovery.hidden = true;
+        espLog('[info]: Device confirmed /config.json after reboot');
+
+      } catch (e) {
+        const target = firmwareWritten ? provisionStatus : flashStatus;
+        target.innerHTML = `<span class="status-badge badge-err">✗ ${e.message}</span>`;
+        flashBtn.disabled = firmwareWritten;
+        if (!firmwareWritten) flashBtn.innerHTML = `⚡ Flash firmware`;
+        retryProvisionBtn.disabled = !firmwareWritten;
+        provisionRecovery.hidden = !firmwareWritten;
+        provisionRecovery.open = firmwareWritten;
+        espLog(`Error: ${e.message}`, 'serial-line-error');
+      }
+    });
+
+    // ── ESP32 Serial Monitor (separate connection, opened after flash port is released) ──
+    let espSerialPort = null, espSerialReader = null, espIsConnecting = false, espAutoScroll = true;
+    const espMonOutput = document.getElementById('espSerialOutput');
+    const espMonConnectBtn = document.getElementById('espConnectSerial');
+    const espMonAutoScrollBtn = document.getElementById('espAutoScrollBtn');
+    const espMonCopyBtn = document.getElementById('espCopySerial');
+    const espMonClearBtn = document.getElementById('espClearSerial');
+
+    espMonAutoScrollBtn.addEventListener('click', () => {
+      espAutoScroll = !espAutoScroll;
+      espMonAutoScrollBtn.style.borderColor = espAutoScroll ? 'var(--accent2)' : 'var(--border)';
+      espMonAutoScrollBtn.style.color = espAutoScroll ? 'var(--accent2)' : 'var(--muted)';
+      espMonAutoScrollBtn.textContent = espAutoScroll ? '⬇ Auto' : '⏸ Auto';
+    });
+    espMonCopyBtn.addEventListener('click', () => {
+      const text = Array.from(espMonOutput.querySelectorAll('div')).map(d => d.textContent).join('\n');
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        espMonCopyBtn.textContent = '✓ Copied';
+        setTimeout(() => { espMonCopyBtn.textContent = '⎘ Copy'; }, 1500);
+      });
+    });
+    espMonClearBtn.addEventListener('click', () => {
+      espMonOutput.innerHTML = '<span class="serial-hint">After flashing, click Connect to view your board\'s boot output.</span>';
+    });
+    function espAppendLine(line) {
+      if (!line.trim()) return;
+      const div = document.createElement('div');
+      if      (line.includes('[info]'))  div.className = 'serial-line-info';
+      else if (line.includes('[debug]')) div.className = 'serial-line-debug';
+      else if (line.includes('[warn]'))  div.className = 'serial-line-warn';
+      else if (line.includes('[error]')) div.className = 'serial-line-error';
+      div.textContent = line;
+      espMonOutput.appendChild(div);
+      if (espAutoScroll) espMonOutput.scrollTop = espMonOutput.scrollHeight;
+    }
+
+    espMonConnectBtn.addEventListener('click', () => espConnectMonitor(false));
+
+    // core connect logic — silent=true skips the port picker dialog and any
+    // user-facing error messages, used for automatic post-flash attempts
+    async function espConnectMonitor(silent) {
+      if (espSerialPort) {
+        if (silent) return true; // already connected, nothing to do
+        try { await espSerialReader?.cancel(); } catch(e) {}
+        try { await espSerialPort.close(); } catch(e) {}
+        espSerialPort = null; espSerialReader = null;
+        espMonConnectBtn.textContent = 'Connect';
+        espMonConnectBtn.style.borderColor = ''; espMonConnectBtn.style.color = '';
+        return false;
+      }
+      if (espIsConnecting) return false;
+      espIsConnecting = true;
+      if (!silent) espMonConnectBtn.textContent = 'Connecting…';
+
+      const baud = parseInt(document.getElementById('espBaudRate').value);
+
+      // Prefer reusing the exact port handle used for flashing — more reliable
+      // than requestPort(), which may show the browser's already-authorized
+      // port as "in use" if esptool-js's internal reader wasn't fully released.
+      let port = null;
+      let usedExistingHandle = false;
+      if (device) {
+        try {
+          await device.open({ baudRate: baud });
+          port = device;
+          usedExistingHandle = true;
+        } catch (e) {
+          if (!silent) espAppendLine(`Reusing flash port failed (${e.message}) — falling back to port picker…`);
+        }
+      }
+
+      if (!port && silent) {
+        // don't pop the browser's port picker during a silent auto-connect attempt
+        espIsConnecting = false;
+        return false;
+      }
+
+      try {
+        if (!port) {
+          port = await navigator.serial.requestPort();
+          try { await port.close(); } catch(e) {}
+          await port.open({ baudRate: baud });
+        }
+
+        espSerialPort = port;
+        espMonConnectBtn.textContent = 'Disconnect';
+        espMonConnectBtn.style.borderColor = 'var(--accent2)';
+        espMonConnectBtn.style.color = 'var(--accent2)';
+        espMonOutput.innerHTML = '';
+        espAppendLine('[connected — waiting for output…]');
+
+        // Ensure DTR/RTS are released — esptool-js's reset pulse toggles RTS to
+        // reboot the chip; if it isn't explicitly deasserted afterward, the
+        // ESP32 can be left held in reset with zero output ever appearing.
+        try {
+          await espSerialPort.setSignals({ dataTerminalReady: false, requestToSend: false });
+        } catch (e) {
+          espAppendLine(`[warn]: could not set DTR/RTS — ${e.message}`);
+        }
+
+        const decoder = new TextDecoderStream();
+        espSerialPort.readable.pipeTo(decoder.writable);
+        const reader = decoder.readable.getReader();
+        espSerialReader = reader;
+
+        // read loop runs in the background — don't block the caller on it,
+        // so auto-connect can report success/failure immediately
+        (async () => {
+          let buffer = '';
+          try {
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              buffer += value;
+              const lines = buffer.split('\n');
+              buffer = lines.pop();
+              lines.forEach(espAppendLine);
+            }
+          } catch(e) {
+          } finally {
+            reader.releaseLock();
+            try { await espSerialPort.close(); } catch(e) {}
+            espSerialPort = null; espSerialReader = null;
+            espMonConnectBtn.textContent = 'Connect';
+            espMonConnectBtn.style.borderColor = ''; espMonConnectBtn.style.color = '';
+          }
+        })();
+
+        espIsConnecting = false;
+        return true;
+
+      } catch(e) {
+        if (!silent) {
+          const div = document.createElement('div');
+          div.className = 'serial-line-error';
+          div.textContent = (e.message || '').includes('already open')
+            ? '⚠ Port still locked. Unplug and replug the USB cable, then click Connect again.'
+            : `Error: ${e.message}`;
+          espMonOutput.appendChild(div);
+        }
+        espSerialPort = null;
+        espMonConnectBtn.textContent = 'Connect';
+        espMonConnectBtn.style.borderColor = ''; espMonConnectBtn.style.color = '';
+        espIsConnecting = false;
+        return false;
+      }
+    }
+
+    // tries a few times, since the port may take a moment to release after reset
+    async function autoConnectMonitorWithRetry(maxAttempts = 6, delayMs = 500) {
+      for (let i = 0; i < maxAttempts; i++) {
+        const ok = await espConnectMonitor(true);
+        if (ok) {
+          espLog('Serial Monitor auto-connected.');
+          return;
+        }
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+      espLog('Auto-connect didn\'t succeed — click Connect in Serial Monitor below (may need unplug/replug first).', 'serial-line-warn');
+    }
+  }
+</script>
+
+<script>
+  // ── Theme toggle ──
+  (function() {
+    const btn = document.getElementById('themeToggle');
+    const root = document.documentElement;
+    function updateIcon() {
+      btn.textContent = root.getAttribute('data-theme') === 'light' ? '🌙' : '☀️';
+    }
+    updateIcon();
+    btn.addEventListener('click', () => {
+      const isLight = root.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        root.removeAttribute('data-theme');
+        localStorage.setItem('iotwx_theme', 'dark');
+      } else {
+        root.setAttribute('data-theme', 'light');
+        localStorage.setItem('iotwx_theme', 'light');
+      }
+      updateIcon();
+    });
+  })();
+</script>
+
+<script>
+  (function () {
+    if (window.parent === window) return; // standalone visit, not embedded
+
+    var ALLOWED_PARENT_ORIGINS = [
+      "https://ncar.github.io",   // production docs site
+      "http://127.0.0.1:8000",    // local mkdocs serve
+      "http://localhost:8000"     // local mkdocs serve, alt hostname
+    ];
+
+    var referrerOrigin = document.referrer ? new URL(document.referrer).origin : null;
+    var PARENT_ORIGIN = ALLOWED_PARENT_ORIGINS.indexOf(referrerOrigin) !== -1 ? referrerOrigin : null;
+
+    if (!PARENT_ORIGIN) return; // unrecognized embedder — don't send height anywhere
+
+    function reportHeight() {
+      var height = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight
+      );
+      window.parent.postMessage({ type: "mesonet-flasher-resize", height: height }, PARENT_ORIGIN);
+    }
+
+    window.addEventListener("load", function () {
+      reportHeight();
+      setTimeout(reportHeight, 300);
+    });
+    window.addEventListener("resize", reportHeight);
+
+    new ResizeObserver(reportHeight).observe(document.documentElement);
+  })();
+</script>
+
+
+<script>
+  // Radio (LoRa) plans also need a Raspberry Pi gateway: add its step to the bar when the saved plan is one.
+  (function () {
+    try {
+      const draft = JSON.parse(localStorage.getItem('openiotwx-draft-v3') || localStorage.getItem('openiotwx-draft-v1') || 'null');
+      const link = draft && draft.answers && draft.answers.link;
+      if (link !== 'lora' && link !== 'ham') return;
+      const flash = Array.from(document.querySelectorAll('.steps .step')).find(function (el) { return /Flash/.test(el.textContent); });
+      if (flash) {
+        const divider = document.createElement('div');
+        divider.className = 'step-divider';
+        const pi = document.createElement('a');
+        pi.className = 'step';
+        pi.href = '/raspberry-pi';
+        pi.title = 'Your plan uses radio, so a Raspberry Pi gateway hears the stations';
+        pi.innerHTML = '<div class="step-num">\u03c0</div>Raspberry Pi gateway';
+        flash.after(divider, pi);
+      }
+      const next = document.getElementById('piNext');
+      if (next) next.style.display = 'inline-flex';
+    } catch (e) { /* the bar still works without it */ }
+  })();
+
+  // Phone menu: the links collapse behind a three-line button, as on the main site.
+  (function () {
+    const header = document.querySelector('header.site-header');
+    const btn = document.getElementById('menuBtn');
+    if (!header || !btn) return;
+    const bars = btn.querySelector('.bars');
+    const cross = btn.querySelector('.cross');
+    function set(open) {
+      header.classList.toggle('menu-open', open);
+      btn.setAttribute('aria-expanded', String(open));
+      btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+      bars.style.display = open ? 'none' : '';
+      cross.style.display = open ? '' : 'none';
+    }
+    btn.addEventListener('click', function () { set(!header.classList.contains('menu-open')); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') set(false); });
+    window.matchMedia('(min-width: 1024px)').addEventListener('change', function () { set(false); });
+  })();
+</script>
+<script>
+  // Same account controls as the rest of the site: ask the same session endpoint, then show
+  // "Sign in" or "My system" + "Sign out" in the header's place.
+  (function () {
+    var slot = document.getElementById('acct');
+    if (!slot) return;
+    var token = null;
+    try { token = sessionStorage.getItem('grok-auth.bearer-token'); } catch (e) {}
+    var headers = { 'content-type': 'application/json' };
+    if (token) headers.Authorization = 'Bearer ' + token;
+    // The last answer is remembered, so the header never blinks while the session is checked.
+    var KEY = 'openiotwx-acct';
+    function show(inn) {
+      slot.innerHTML = inn
+        ? '<a class="nav-account" href="/account">My system</a><button type="button" class="nav-btn" id="signOutBtn">Sign out</button>'
+        : '<a class="nav-signin" href="/login?next=/account">Sign in</a>';
+      var out = document.getElementById('signOutBtn');
+      if (out) out.addEventListener('click', signOut);
+    }
+    function remember(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
+    function signedOut() { remember('out'); show(false); }
+    function signOut() {
+      fetch('/api/auth/sign-out', { method: 'POST', credentials: 'include', headers: headers, body: '{}' })
+        .catch(function () {})
+        .then(function () {
+          try { sessionStorage.removeItem('grok-auth.bearer-token'); } catch (e) {}
+          remember('out');
+          location.reload();
+        });
+    }
+    var cached = null;
+    try { cached = localStorage.getItem(KEY); } catch (e) {}
+    if (cached) show(cached === 'in');
+    fetch('/api/auth/get-session', { credentials: 'include', headers: headers })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) {
+        if (!s || !s.user) return signedOut();
+        remember('in');
+        show(true);
+      })
+      .catch(signedOut);
+  })();
+</script>
+</body>
+</html>

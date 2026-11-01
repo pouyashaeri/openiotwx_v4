@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: metabase }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: metabase } }
+  template:
+    metadata: { labels: { app: metabase } }
+    spec:
+      containers:
+        - name: metabase
+          image: {{ .Values.metabase.image }}
+          resources: { requests: { memory: {{ .Values.metabase.memory }} }, limits: { memory: {{ .Values.metabase.memory }} } }
+          env:
+            - { name: MB_DB_TYPE, value: postgres }
+            - { name: MB_DB_DBNAME, value: metabase }
+            - { name: MB_DB_PORT, value: "5432" }
+            - { name: MB_DB_HOST, value: postgres }
+            - { name: MB_DB_USER, value: {{ .Values.postgres.user | quote }} }
+            - name: MB_DB_PASS
+              valueFrom: { secretKeyRef: { name: {{ .Values.postgres.passwordSecret }}, key: password } }
+            - { name: MB_SITE_URL, value: "https://metabase.{{ .Values.app.domain }}" }
+          ports: [{ containerPort: 3000 }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: metabase }
+spec: { selector: { app: metabase }, ports: [{ port: 3000 }] }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: metabase
+  annotations: { cert-manager.io/cluster-issuer: {{ .Values.app.tlsIssuer }} }
+spec:
+  tls: [{ hosts: ["metabase.{{ .Values.app.domain }}"], secretName: metabase-tls }]
+  rules:
+    - host: metabase.{{ .Values.app.domain }}
+      http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: metabase, port: { number: 3000 } } } }] }

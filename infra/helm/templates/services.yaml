@@ -1,0 +1,54 @@
+{{- $root := . -}}
+{{- range $name, $svc := dict "database-api" .Values.databaseApi "mqtt-listener" .Values.mqttListener "place-loader" .Values.placeLoader "metabase-orch" .Values.metabaseOrch }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: {{ $name }} }
+spec:
+  replicas: {{ $svc.replicas | default 1 }}
+  selector: { matchLabels: { app: {{ $name }} } }
+  template:
+    metadata: { labels: { app: {{ $name }} } }
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: {{ $root.Values.app.registry }}/{{ $svc.image }}
+          imagePullPolicy: {{ $root.Values.app.imagePullPolicy }}
+          {{- if $svc.cpu }}
+          resources: { requests: { cpu: {{ $svc.cpu | quote }}, memory: {{ $svc.memory }} }, limits: { memory: {{ $svc.memory }} } }
+          {{- end }}
+          env:
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $root.Values.postgres.passwordSecret }}, key: password } }
+            - { name: DATABASE_URL, value: "postgresql://{{ $root.Values.postgres.user }}:$(DB_PASSWORD)@postgres:5432/{{ $root.Values.postgres.db }}" }
+            - { name: API_URL, value: "http://database-api:8000" }
+            - { name: MQTT_HOST, value: "mosquitto" }
+            - { name: MQTT_TOPIC, value: "ncar/iotwx/#" }
+            - { name: METABASE_URL, value: "http://metabase:3000" }
+            - { name: DB_HOST, value: "postgres" }
+            - { name: DB_NAME, value: {{ $root.Values.postgres.db | quote }} }
+            - { name: DB_USER, value: {{ $root.Values.postgres.user | quote }} }
+            - { name: CORS_ORIGINS, value: {{ $root.Values.databaseApi.corsOrigins | quote }} }
+            - { name: EJAM_URL, value: {{ $root.Values.placeLoader.ejamUrl | quote }} }
+            - { name: CIRRUS_ENABLED, value: "1" }
+            - name: MB_ADMIN_EMAIL
+              valueFrom: { secretKeyRef: { name: {{ $root.Values.metabase.adminSecret }}, key: email } }
+            - name: MB_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $root.Values.metabase.adminSecret }}, key: password } }
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata: { name: database-api }
+spec: { selector: { app: database-api }, ports: [{ port: 8000 }] }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: database-api
+  annotations: { cert-manager.io/cluster-issuer: {{ .Values.app.tlsIssuer }} }
+spec:
+  tls: [{ hosts: ["api.{{ .Values.app.domain }}"], secretName: database-api-tls }]
+  rules:
+    - host: api.{{ .Values.app.domain }}
+      http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: database-api, port: { number: 8000 } } } }] }

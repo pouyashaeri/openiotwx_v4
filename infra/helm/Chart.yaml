@@ -1,0 +1,6 @@
+apiVersion: v2
+name: openiotwx
+description: OpenIoTwx v3 community stack for NCAR CIRRUS (or any Kubernetes, including OpenStack-hosted clusters)
+type: application
+version: 3.0.0
+appVersion: "3.0.0"

@@ -1,0 +1,57 @@
+{{- if .Values.credit.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: credit-checkpoint }
+spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: {{ .Values.credit.checkpointStorage }} } } }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: credit-static }
+spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: {{ .Values.credit.staticStorage }} } } }
+---
+# The runner polls the queue continuously (backend=cirrus). The CronJob below is the siparcs25
+# pattern kept for a guaranteed rollout per GFS cycle even when nobody has pressed the button.
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: credit-runner }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: credit-runner } }
+  template:
+    metadata: { labels: { app: credit-runner } }
+    spec:
+      containers:
+        - name: credit
+          image: {{ .Values.app.registry }}/{{ .Values.credit.image }}
+          env:
+            - { name: API_URL, value: "http://database-api:8000" }
+            - { name: BACKEND, value: "cirrus" }
+            - { name: DEVICE, value: {{ if gt (int .Values.credit.gpu) 0 }}"cuda"{{ else }}"cpu"{{ end }} }
+            - { name: IPFS_API, value: "http://ipfs:5001" }
+          resources:
+            requests: { cpu: {{ .Values.credit.cpu | quote }}, memory: {{ .Values.credit.memory }} }
+            limits: { memory: {{ .Values.credit.memory }}{{ if gt (int .Values.credit.gpu) 0 }}, nvidia.com/gpu: {{ .Values.credit.gpu }}{{ end }} }
+          volumeMounts:
+            - { name: checkpoint, mountPath: /data/checkpoint }
+            - { name: static, mountPath: /data/static }
+      volumes:
+        - { name: checkpoint, persistentVolumeClaim: { claimName: credit-checkpoint } }
+        - { name: static, persistentVolumeClaim: { claimName: credit-static } }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: { name: credit-cycle }
+spec:
+  schedule: {{ .Values.credit.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: enqueue
+              image: curlimages/curl:8.11.1
+              args: ["-sS", "-X", "POST", "http://database-api:8000/api/forecast-runs/", "-H", "Content-Type: application/json",
+                     "-d", "{\"latitude\": 40.015, \"longitude\": -105.27, \"lead_hours\": 168, \"backend\": \"cirrus\"}"]
+{{- end }}

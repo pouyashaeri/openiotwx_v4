@@ -1,0 +1,236 @@
+# OpenIoTwx v3 community stack.
+# One command on a Raspberry Pi, a spare PC, or a cloud VM:  docker compose up -d
+# Profiles add the optional pieces:  docker compose --profile forecast --profile archive up -d
+#
+# Follows the shape of NCAR/mesonet-siparcs25 (MQTT → listener → database API → Metabase) with the
+# v3 additions: place profile loader (SVI + EJScreen), CREDIT runner, BOINC client, IPFS pinning,
+# and the GDEX publisher. Every service is replaceable; none phones home.
+
+name: openiotwx
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # stations
+      - "9001:9001"   # browsers (WebSockets) for the live feed
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -i healthcheck -W 3 >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: timescale/timescaledb:2.17.2-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  database_api:
+    build: ./services/database_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      EJAM_URL: ${EJAM_URL}
+      BOINC_PROJECT_URL: ${BOINC_PROJECT_URL}
+      BOINC_ACCOUNT_KEY: ${BOINC_ACCOUNT_KEY}
+      CIRRUS_ENABLED: ${CIRRUS_ENABLED}
+      API_VERSION: "3.0.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  mqtt_listener:
+    build: ./services/mqtt_listener
+    restart: unless-stopped
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      MQTT_TOPIC: ${MQTT_TOPIC}
+      API_URL: http://database_api:8000
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      database_api:
+        condition: service_healthy
+
+  metabase:
+    image: metabase/metabase:v0.54.4
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: "5432"
+      MB_DB_USER: ${POSTGRES_USER}
+      MB_DB_PASS: ${POSTGRES_PASSWORD}
+      MB_DB_HOST: postgres
+      MB_SITE_URL: ${METABASE_SITE_URL}
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
+    volumes:
+      - /dev/urandom:/dev/random:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail -I http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  metabase_orch:
+    build: ./services/metabase_orch
+    restart: on-failure
+    environment:
+      METABASE_URL: http://metabase:3000
+      MB_ADMIN_EMAIL: ${MB_ADMIN_EMAIL}
+      MB_ADMIN_PASSWORD: ${MB_ADMIN_PASSWORD}
+      MB_SITE_NAME: ${MB_SITE_NAME}
+      DB_HOST: postgres
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      API_URL: http://database_api:8000
+      RESYNC_MINUTES: "30"
+    depends_on:
+      metabase:
+        condition: service_healthy
+      database_api:
+        condition: service_healthy
+
+  place_loader:
+    build: ./services/place_loader
+    restart: on-failure
+    environment:
+      API_URL: http://database_api:8000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      EJAM_URL: ${EJAM_URL}
+      SVI_SERVICE: ${SVI_SERVICE}
+      REFRESH_HOURS: "24"
+    depends_on:
+      database_api:
+        condition: service_healthy
+
+  # Publishes one synthetic station so the portal has something to show on day one.
+  # Remove it (or set DEMO_STATION=0) once a real station is on the broker.
+  demo_station:
+    build: ./services/demo_station
+    restart: unless-stopped
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_TOPIC: ${DEMO_TOPIC}
+      STATION_ID: ${DEMO_STATION_ID}
+      LATITUDE: ${DEMO_LAT}
+      LONGITUDE: ${DEMO_LON}
+      INTERVAL_SECONDS: "60"
+      ENABLED: ${DEMO_STATION}
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+
+  # ---------- optional: forecasting ----------
+  credit_runner:
+    build: ./services/credit_runner
+    profiles: ["forecast"]
+    restart: unless-stopped
+    environment:
+      API_URL: http://database_api:8000
+      CREDIT_CHECKPOINT: /data/checkpoint
+      CREDIT_STATIC: /data/static
+      POLL_SECONDS: "60"
+      DEVICE: ${CREDIT_DEVICE}
+      IPFS_API: http://ipfs:5001
+      BACKEND: local
+    volumes:
+      - credit_data:/data
+      - ./services/credit_runner/results:/results
+    depends_on:
+      database_api:
+        condition: service_healthy
+    # Uncomment for a GPU host:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  boinc_client:
+    image: boinc/client:latest
+    profiles: ["volunteer"]
+    restart: unless-stopped
+    environment:
+      BOINC_CMD_LINE_OPTIONS: "--allow_remote_gui_rpc"
+      BOINC_GUI_RPC_PASSWORD: ${BOINC_GUI_RPC_PASSWORD}
+      BOINC_REMOTE_HOST: "127.0.0.1"
+    volumes:
+      - boinc_data:/var/lib/boinc
+    # Attach to the community project once (then it persists in the volume):
+    #   docker compose exec boinc_client boinccmd --project_attach $BOINC_PROJECT_URL $BOINC_ACCOUNT_KEY
+
+  # ---------- optional: archive and decentralized copies ----------
+  ipfs:
+    image: ipfs/kubo:v0.33.2
+    profiles: ["archive"]
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+      - "127.0.0.1:5001:5001"
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ipfs_data:/data/ipfs
+    environment:
+      IPFS_PROFILE: lowpower
+
+  gdex_publisher:
+    build: ./services/gdex_publisher
+    profiles: ["archive"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      API_URL: http://database_api:8000
+      EXPORT_DIR: /exports
+      IPFS_API: http://ipfs:5001
+      GDEX_ENDPOINT: ${GDEX_ENDPOINT}
+      GDEX_TOKEN: ${GDEX_TOKEN}
+      GDEX_COLLECTION: ${GDEX_COLLECTION}
+      SCHEDULE_HOURS: "24"
+      DRY_RUN: ${GDEX_DRY_RUN}
+    volumes:
+      - ./exports:/exports
+    depends_on:
+      database_api:
+        condition: service_healthy
+
+volumes:
+  mosquitto_data:
+  postgres_data:
+  credit_data:
+  boinc_data:
+  ipfs_data:

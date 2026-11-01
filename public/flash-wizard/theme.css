@@ -1,0 +1,254 @@
+/* Site theme for the web flasher: deep blue + white, Inter + JetBrains Mono.
+   Loaded after each page's inline <style>, so it only overrides look, never behavior. */
+:root {
+  --bg: #071530;
+  --surface: #0d2147;
+  --border: #213b6e;
+  --accent: #6ea8ff;
+  --accent2: #4ade80;
+  --text: #eaf1ff;
+  --muted: #9db0d3;
+  --danger: #ff7b72;
+  --warn: #e3b341;
+  --radius: 8px;
+  --navy: #071530;
+  --on-accent: #071530;
+}
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #eef3fb;
+  --border: #d5deee;
+  --accent: #1649c9;
+  --accent2: #15803d;
+  --text: #0a1a3a;
+  --muted: #475a7a;
+  --danger: #b42318;
+  --warn: #b45309;
+  --on-accent: #ffffff;
+}
+
+body { font-family: var(--font-sans); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+h1, .page-title { letter-spacing: -0.02em; }
+.page-title { font-size: 28px; font-weight: 650; }
+
+/* Header: identical to the main site header (navy bar, logo mark, mono wordmark, pill links) */
+header.site-header {
+  view-transition-name: site-header; /* holds still while pages cross-fade under it */
+  display: block; padding: 0; position: sticky; top: 0; z-index: 30;
+  background: rgb(7 21 48 / 0.95); backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgb(255 255 255 / 0.1); color: #fff;
+}
+.site-header-inner {
+  max-width: 64rem; margin: 0 auto; min-height: 64px; padding: 0 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.site-logo { display: flex; align-items: center; gap: 10px; min-width: 0; color: #fff; text-decoration: none; }
+.site-logo-mark {
+  width: 32px; height: 32px; flex-shrink: 0; border-radius: 6px; background: #1649c9;
+  display: grid; place-items: center;
+}
+.site-logo-mark span { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; }
+.site-logo-text {
+  font-family: var(--font-mono); font-size: 16px; font-weight: 600; line-height: 1;
+  letter-spacing: -0.025em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.site-logo-mark { transition: background-color 220ms ease, filter 220ms ease, box-shadow 220ms ease; }
+/* The logo mark lights up like the Sign in button when the logo is hovered or focused. */
+.site-logo:hover .site-logo-mark,
+.site-logo:focus-visible .site-logo-mark {
+  background: #2a5ee0; filter: brightness(1.15);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.22), 0 0 18px rgb(120 160 255 / 0.5);
+}
+.site-logo-text { min-width: 10ch; }
+.site-logo-text em { font-style: normal; color: #93c5fd; }
+.type-caret {
+  display: inline-block; width: 2px; height: 1em; margin-left: 1px; vertical-align: -0.12em;
+  background: #93c5fd; animation: caret-blink 900ms steps(1) infinite;
+}
+@keyframes caret-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .type-caret { animation: none; } }
+header.site-header .site-nav { display: flex; align-items: center; gap: 4px; margin: 0; }
+header.site-header .site-nav a,
+header.site-header .site-nav button.nav-btn {
+  position: relative; display: inline-flex; align-items: center; height: 36px; padding: 0 12px;
+  border-radius: 8px; border: 0; background: none; cursor: pointer; text-decoration: none;
+  font: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap;
+  color: rgb(219 234 254 / 0.7); transition: color 0.15s, background-color 0.15s;
+}
+header.site-header .site-nav a:hover,
+header.site-header .site-nav button.nav-btn:hover { color: #fff; background: rgb(255 255 255 / 0.07); }
+/* The current page: white text and a thin marker on the header's lower edge. */
+header.site-header .site-nav a.active { color: #fff; background: none; }
+header.site-header .site-nav a.active::after {
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: -14px; height: 2px;
+  border-radius: 2px; background: #60a5fa;
+}
+.nav-sep { width: 1px; height: 20px; margin: 0 12px; background: rgb(255 255 255 / 0.15); }
+header.site-header .site-nav a.nav-account { color: #fff; border: 1px solid rgb(255 255 255 / 0.2); padding: 0 14px; }
+header.site-header .site-nav a.nav-account:hover { background: rgb(255 255 255 / 0.1); }
+header.site-header .site-nav a.nav-signin {
+  background: rgb(255 255 255 / 0.15); color: #fff; font-weight: 600; padding: 0 16px;
+  transition: background-color 220ms ease, filter 220ms ease, box-shadow 220ms ease;
+}
+/* Same hover as the main site: the button brightens and gives off a soft light. */
+header.site-header .site-nav a.nav-signin:hover,
+header.site-header .site-nav a.nav-signin:focus-visible {
+  background: rgb(255 255 255 / 0.25); color: #fff; filter: brightness(1.15);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.22), 0 0 18px rgb(120 160 255 / 0.5);
+}
+header.site-header .theme-toggle[hidden] { display: none; }
+header.site-header .theme-toggle {
+  margin-left: 8px; width: 30px; height: 30px; font-size: 14px;
+  background: rgb(255 255 255 / 0.08); border-color: rgb(255 255 255 / 0.2);
+}
+
+.btn-primary, .btn-primary:hover { color: var(--on-accent); }
+.spinner { border-color: rgb(128 128 128 / 0.35); border-top-color: var(--on-accent); }
+.device-card:hover, .dropzone:hover { border-color: var(--accent); }
+.device-card.selected { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.serial-monitor { background: #020817; }
+label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; }
+.logo, .step-num, .fstep-num, .code { font-family: var(--font-mono); }
+
+/* "From your plan" banner shown on the setup page */
+.plan-banner {
+  display: flex; gap: 14px; align-items: flex-start;
+  border: 1px solid var(--accent); border-left-width: 4px; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  padding: 14px 16px; margin-bottom: 24px; font-size: 13px; line-height: 1.5;
+}
+.plan-banner strong { color: var(--text); }
+.plan-banner .eyebrow {
+  display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 4px;
+}
+.plan-banner a { color: var(--accent); }
+.device-card.not-recommended { opacity: 0.55; }
+.device-card.not-recommended:hover { opacity: 0.9; }
+.device-tag {
+  display: inline-block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent);
+  border-radius: 4px; padding: 1px 6px; margin-bottom: 8px;
+}
+
+@media (max-width: 640px) {
+  header.site-header .site-nav { gap: 0; }
+  header.site-header .site-nav a { padding: 6px 8px; font-size: 13px; }
+  main { padding: 28px 16px 64px; }
+  .device-picker { grid-template-columns: 1fr; }
+  .field-row, .field-row-3 { grid-template-columns: 1fr; }
+}
+
+/* Smooth hand-off between the main site and these pages (cross-document view transitions) */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 260ms; animation-timing-function: ease; }
+header { view-transition-name: site-header; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+
+/* Phones: keep the full wordmark visible, as on the main site */
+@media (max-width: 480px) {
+  header.site-header .theme-toggle { display: none; }
+}
+
+
+/* Menu button: below 1024px the links collapse behind a three-line button (same breakpoint as the main site). */
+header.site-header .menu-btn { display: none; }
+@media (max-width: 1023px) {
+  header.site-header .menu-btn {
+    display: grid; place-items: center; width: 44px; height: 44px; margin-left: auto; flex-shrink: 0;
+    background: none; border: 0; border-radius: 8px; color: #fff; cursor: pointer;
+  }
+  header.site-header .menu-btn:hover { background: rgb(255 255 255 / 0.1); }
+  header.site-header .site-nav {
+    display: none; position: absolute; left: 0; right: 0; top: 100%;
+    flex-direction: column; align-items: stretch; gap: 2px; padding: 8px 16px 16px;
+    background: rgb(7 21 48 / 0.98); border-bottom: 1px solid rgb(255 255 255 / 0.1);
+    max-height: calc(100dvh - 64px); overflow-y: auto;
+  }
+  header.site-header.menu-open .site-nav { display: flex; }
+  header.site-header .site-nav a.active { background: rgb(255 255 255 / 0.1); box-shadow: inset 2px 0 0 #60a5fa; }
+  header.site-header .site-nav a.active::after { display: none; }
+  .nav-sep { width: auto; height: 1px; margin: 8px 0; }
+  header.site-header .site-nav #acct { display: flex; flex-direction: column; gap: 2px; }
+  header.site-header .site-nav a.nav-signin { justify-content: center; margin-top: 4px; }
+  header.site-header .site-nav button.nav-btn { height: auto; min-height: 48px; font-size: 16px; }
+  header.site-header .site-nav a {
+    display: flex; align-items: center; min-height: 48px; padding: 0 12px; font-size: 16px; border-radius: 8px;
+  }
+}
+
+/* Step bar: steps can be links; the bar wraps on narrow screens. */
+.steps { flex-wrap: wrap; row-gap: 10px; }
+a.step { text-decoration: none; }
+a.step:hover { color: var(--text); }
+a.step:hover .step-num { border-color: var(--accent); }
+
+/* Themed alert / confirm dialogs (dialog.js) */
+dialog.themed-dialog {
+  margin: auto; padding: 0; width: min(92vw, 26rem);
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 24px 60px rgb(0 0 0 / 0.45);
+}
+dialog.themed-dialog::backdrop { background: rgb(7 21 48 / 0.6); backdrop-filter: blur(2px); }
+.themed-dialog-body { display: grid; gap: 14px; padding: 24px; }
+.themed-dialog-body h2 { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 600; }
+.themed-dialog-body p { margin: 0; font-size: 14px; line-height: 1.55; opacity: 0.8; white-space: pre-line; }
+.themed-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.themed-dialog-actions button {
+  min-height: 44px; padding: 0 20px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600;
+  border: 1px solid var(--border); background: transparent; color: var(--text);
+}
+.themed-dialog-actions button:hover { border-color: var(--accent); }
+.themed-dialog-actions .themed-ok { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #fff); }
+.themed-dialog-actions .themed-ok:hover { filter: brightness(1.15); }
+.themed-dialog-actions button[hidden] { display: none; }
+
+/* Step bar: the same pills as the main site's setup steps, sitting in the page column. */
+:root {
+  --pill-on-bg: #1649c9;
+  --pill-on-fg: #f5f8fc;
+  --pill-line: #d5deee;
+  --pill-bg: #ffffff;
+  --pill-fg: #0a1a3a;
+  --pill-badge-bg: #e6eeff;
+  --pill-badge-fg: #0a2a6b;
+}
+:root:not([data-theme="light"]) {
+  --pill-on-bg: var(--accent);
+  --pill-on-fg: var(--on-accent);
+  --pill-line: var(--border);
+  --pill-bg: var(--surface);
+  --pill-fg: var(--text);
+  --pill-badge-bg: rgb(255 255 255 / 0.08);
+  --pill-badge-fg: var(--text);
+}
+.steps {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  max-width: 64rem; margin: 0 auto; padding: 32px 16px 0;
+  background: none; border: 0;
+}
+.steps + main { padding-top: 32px; }
+.steps .step {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px;
+  border-radius: 999px; border: 1px solid var(--pill-line); background: var(--pill-bg); color: var(--pill-fg);
+  font-size: 14px; line-height: 20px; text-decoration: none; transition: border-color 0.15s;
+}
+.steps a.step:hover { border-color: var(--pill-on-bg); color: var(--pill-fg); }
+.steps .step.active { background: var(--pill-on-bg); border-color: var(--pill-on-bg); color: var(--pill-on-fg); }
+.steps .step .step-num,
+.steps .step.done .step-num {
+  display: grid; place-items: center; width: 20px; height: 20px; border: 0; border-radius: 50%;
+  background: var(--pill-badge-bg); color: var(--pill-badge-fg); font-size: 12px; line-height: 1;
+}
+.steps .step.active .step-num { background: var(--pill-on-fg); color: var(--pill-on-bg); }
+.steps .step.done { color: var(--pill-fg); }
+.steps .step-divider { flex: none; width: 20px; height: 1px; margin: 0; max-width: none; background: var(--pill-line); }
+.steps .step-back { margin-left: auto; padding: 0 4px; font-size: 12px; }
+@media (max-width: 640px) {
+  .steps { padding: 24px 16px 0; }
+  .steps .step-divider { display: none; }
+}

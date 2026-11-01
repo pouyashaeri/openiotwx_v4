@@ -1,0 +1,269 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --color-paper: #f5f8fc;
+  --color-paper-deep: #eef3fb;
+  --color-card: #ffffff;
+  --color-ink: #0a1a3a;
+  --color-muted: #475a7a;
+  --color-line: #d5deee;
+  --color-kelp: #1649c9;
+  --color-kelp-deep: #0a2a6b;
+  --color-moss: #e6eeff;
+  --color-copper: #b45309;
+  --color-navy: #071530;
+  --color-brand: #1649c9;
+  --color-brand-deep: #0a2a6b;
+  --color-brand-soft: #e6eeff;
+  --color-surface: #ffffff;
+  --color-surface-2: #eef3fb;
+  --color-panel: #ffffff;
+  --color-warn: #b45309;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 4.5rem;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: #ffffff;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  code,
+  pre,
+  kbd {
+    font-family: var(--font-mono);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 3px;
+  }
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-brand);
+  font-size: 0.75rem;
+}
+
+.grid-bg {
+  background-color: var(--color-navy);
+  background-image:
+    linear-gradient(#ffffff0f 1px, #0000 1px),
+    linear-gradient(90deg, #ffffff0f 1px, #0000 1px),
+    radial-gradient(60rem 28rem at 85% -10%, #306eff73, #0000 60%);
+  background-size: 32px 32px, 32px 32px, auto;
+}
+
+@keyframes step-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.step-in {
+  animation: step-rise 220ms ease;
+}
+
+/* The chat window opening: grows out of the chat button's corner while fading in. */
+@keyframes chat-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.chat-pop {
+  transform-origin: bottom right;
+  animation: chat-pop 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Closing plays the opening backwards: shrinks and fades back toward the chat button. */
+@keyframes chat-pop-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+  }
+}
+
+.chat-pop-out {
+  transform-origin: bottom right;
+  animation: chat-pop-out 200ms cubic-bezier(0.4, 0, 0.8, 0.4) forwards;
+  pointer-events: none;
+}
+
+/* Smooth page changes: cross-fade between routes, and into/out of the static flasher pages */
+@view-transition {
+  navigation: auto;
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+::view-transition-old(root) {
+  animation: page-out 120ms ease both;
+}
+
+::view-transition-new(root) {
+  animation: page-in 240ms ease both;
+}
+
+/* Keep the sticky header still while the page cross-fades under it */
+header.sticky {
+  view-transition-name: site-header;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .step-in,
+  .chat-pop,
+  .chat-pop-out,
+  .animate-pulse,
+  .animate-spin {
+    animation: none;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+@media print {
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+  }
+}
+/* Hover for the Sign in buttons: the button brightens and gives off a soft light. */
+.btn-glow {
+  transition:
+    background-color 220ms ease,
+    filter 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.btn-glow:hover,
+.btn-glow:focus-visible {
+  filter: brightness(1.15);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.22),
+    0 0 18px rgb(120 160 255 / 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-glow {
+    transition: none;
+  }
+}
+
+/* Map tiles: hide the hairline seams browsers can leave between tiles while scrolling and zooming. */
+.leaflet-tile-container img.leaflet-tile {
+  outline: 1px solid transparent;
+}
+
+/* The blinking cursor after the header wordmark while it types. */
+.type-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.12em;
+  background: #93c5fd;
+  animation: caret-blink 900ms steps(1) infinite;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .type-caret {
+    animation: none;
+  }
+}
+
+/* The logo mark lights up like the Sign in button when the header's logo is hovered or focused. */
+.logo-mark {
+  transition:
+    background-color 220ms ease,
+    filter 220ms ease,
+    box-shadow 220ms ease;
+}
+
+a:hover > .logo-mark,
+a:focus-visible > .logo-mark {
+  background-color: #2a5ee0;
+  filter: brightness(1.15);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.22),
+    0 0 18px rgb(120 160 255 / 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-mark {
+    transition: none;
+  }
+}

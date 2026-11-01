@@ -1,0 +1,57 @@
+{{- if .Values.ipfs.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: ipfs-data }
+spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: {{ .Values.ipfs.storage }} } } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: ipfs }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: ipfs } }
+  template:
+    metadata: { labels: { app: ipfs } }
+    spec:
+      containers:
+        - name: ipfs
+          image: {{ .Values.ipfs.image }}
+          ports: [{ containerPort: 4001 }, { containerPort: 5001 }, { containerPort: 8080 }]
+          volumeMounts: [{ name: data, mountPath: /data/ipfs }]
+      volumes: [{ name: data, persistentVolumeClaim: { claimName: ipfs-data } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: ipfs }
+spec: { selector: { app: ipfs }, ports: [{ name: api, port: 5001 }, { name: gateway, port: 8080 }] }
+{{- end }}
+{{- if .Values.gdexPublisher.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: gdex-publisher }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: gdex-publisher } }
+  template:
+    metadata: { labels: { app: gdex-publisher } }
+    spec:
+      containers:
+        - name: publisher
+          image: {{ .Values.app.registry }}/{{ .Values.gdexPublisher.image }}
+          env:
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.postgres.passwordSecret }}, key: password } }
+            - { name: DATABASE_URL, value: "postgresql://{{ .Values.postgres.user }}:$(DB_PASSWORD)@postgres:5432/{{ .Values.postgres.db }}" }
+            - { name: API_URL, value: "http://database-api:8000" }
+            - { name: IPFS_API, value: "http://ipfs:5001" }
+            - { name: DRY_RUN, value: {{ .Values.gdexPublisher.dryRun | quote }} }
+            - name: GDEX_ENDPOINT
+              valueFrom: { secretKeyRef: { name: {{ .Values.gdexPublisher.secret }}, key: endpoint, optional: true } }
+            - name: GDEX_TOKEN
+              valueFrom: { secretKeyRef: { name: {{ .Values.gdexPublisher.secret }}, key: token, optional: true } }
+            - name: GDEX_COLLECTION
+              valueFrom: { secretKeyRef: { name: {{ .Values.gdexPublisher.secret }}, key: collection, optional: true } }
+          volumeMounts: [{ name: exports, mountPath: /exports }]
+      volumes: [{ name: exports, emptyDir: {} }]
+{{- end }}

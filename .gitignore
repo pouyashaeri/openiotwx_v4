@@ -1,0 +1,12 @@
+node_modules/
+.project_id
+.github_repo
+.env
+.env.*
+
+!.env.example
+.output/
+deploy/mosquitto/passwd
+screenshots/
+.tanstack/
+.vercel/

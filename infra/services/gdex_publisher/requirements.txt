@@ -1,0 +1,6 @@
+psycopg[binary]==3.2.3
+pandas==2.2.3
+pyarrow==18.1.0
+xarray==2024.11.0
+netCDF4==1.7.2
+requests==2.32.3
