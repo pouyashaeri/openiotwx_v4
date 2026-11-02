@@ -33,15 +33,24 @@ export function fromGateway(input: unknown): {
       continue;
     }
     if (m.type === "station_info") {
-      take("latitude", m.latitude, -90, 90);
-      take("longitude", m.longitude, -180, 180);
-      take("elevation", m.altitude ?? m.elevation, -500, 9000);
+      // The flasher stores 0 for "not set". A latitude and longitude of exactly 0, 0 (and an altitude of 0) mean
+      // the person left them blank, so they must not move the station or overwrite a real elevation.
+      const unsetPlace = num(m.latitude) === 0 && num(m.longitude) === 0;
+      if (!unsetPlace) {
+        take("latitude", m.latitude, -90, 90);
+        take("longitude", m.longitude, -180, 180);
+      }
+      const altitude = m.altitude ?? m.elevation;
+      if (num(altitude) !== 0) take("elevation", altitude, -500, 9000);
       skipped += 1;
       continue;
     }
     const sensor = clean(m.sensor);
     const measurement = clean(m.measurement);
-    if (POSITION.has(measurement)) {
+    // A BME680 (or any weather sensor) reports an altitude worked out from air pressure. That moves with the
+    // weather, so it is stored as a reading like any other. Only a GPS receiver's altitude is the station's position.
+    const fromGps = /gps|gnss|pa1010d|neo/.test(sensor);
+    if (POSITION.has(measurement) && (measurement !== "altitude" || fromGps)) {
       if (measurement === "latitude") take("latitude", m.reading_value, -90, 90);
       else if (measurement === "longitude") take("longitude", m.reading_value, -180, 180);
       else take("elevation", m.reading_value, -500, 9000);
