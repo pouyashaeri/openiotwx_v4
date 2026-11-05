@@ -188,8 +188,8 @@ try {
   await page.getByRole("link", { name: "Hub Test" }).first().click();
   await page.waitForURL((u) => u.pathname.startsWith("/stations/"));
   const slug = new URL(page.url()).pathname.split("/").pop();
-  await page.getByLabel("Latitude (−90 to 90)").fill("40.02");
-  await page.getByLabel("Longitude (−180 to 180)").fill("-105.27");
+  await page.getByLabel("Latitude (−90 to 90)").first().fill("40.02");
+  await page.getByLabel("Longitude (−180 to 180)").first().fill("-105.27");
   await page.getByRole("button", { name: "Save location" }).click();
   await page.getByText("Location saved").waitFor();
   const now = Date.now();

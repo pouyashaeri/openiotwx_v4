@@ -99,8 +99,8 @@ try {
   ok("step 4 asks for the station's location when it has none");
   await page.getByRole("link", { name: "Add it on the station's page" }).click();
   await page.waitForURL((u) => u.pathname.startsWith("/stations/"));
-  await page.getByLabel("Latitude (−90 to 90)").fill("39.95");
-  await page.getByLabel("Longitude (−180 to 180)").fill("-105.20");
+  await page.getByLabel("Latitude (−90 to 90)").first().fill("39.95");
+  await page.getByLabel("Longitude (−180 to 180)").first().fill("-105.20");
   await page.getByRole("button", { name: "Save location" }).click();
   await page.getByText("Location saved").waitFor();
   ok("a station's location can be saved from its page");

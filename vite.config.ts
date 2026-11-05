@@ -7,6 +7,7 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 import { devDataDir } from "./scripts/dev-data.mjs";
+import { SECURITY_HEADERS } from "./src/lib/security/headers";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
 
 /** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
@@ -165,6 +166,8 @@ export default defineConfig(({ command, isPreview }) => ({
           nitro({
             // The Docker image runs the node server; set NITRO_PRESET to target something else.
             preset: process.env.NITRO_PRESET || "node-server",
+            // Security headers on every response, static files included (see src/lib/security/headers.ts).
+            routeRules: { "/**": { headers: SECURITY_HEADERS } },
           }),
         ]
       : []),

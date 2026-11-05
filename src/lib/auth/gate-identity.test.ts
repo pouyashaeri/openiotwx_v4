@@ -269,7 +269,9 @@ describe("gateIdentityFromHeaders", () => {
     }
   });
 
-  it("verifies a preview-audience token with no gate env vars via the loopback default", async () => {
+  it("ignores the header, and fetches no key, on a server that is not behind the Grok gateway", async () => {
+    // Used to fall back to a signing key fetched from http://127.0.0.1:6014, so whatever answered on that local
+    // port could log anyone in. Now a server with no gateway configured does not look at the header at all.
     const key = await makeKey("k-preview");
     const fetchedFrom: string[] = [];
     const fetchImpl = async (url: string): Promise<GateJwks> => {
@@ -290,25 +292,29 @@ describe("gateIdentityFromHeaders", () => {
       }),
       fetchImpl,
     );
-    assert.equal(identity?.sub, "user-1");
-    assert.equal(fetchedFrom[0], "http://127.0.0.1:6014/__gate/identity-key");
+    assert.equal(identity, null);
+    assert.deepEqual(fetchedFrom, []);
   });
 
-  it("rejects a wrong-issuer token in the loopback default mode", async () => {
+  it("rejects a wrong-issuer token even when the gateway is configured", async () => {
     const key = await makeKey("k-preview-iss");
     const { fetchImpl } = staticJwks([key.jwk]);
     delete process.env.GROK_PROJECT_ID;
-    delete process.env.GROK_GATE_ORIGIN;
-    const token = await signToken(
-      key,
-      { sub: "user-1" },
-      { issuer: ISSUER, audience: "preview" },
-    );
-    const identity = await gateIdentityFromHeaders(
-      new Headers({ "x-grok-identity": token }),
-      fetchImpl,
-    );
-    assert.equal(identity, null);
+    process.env.GROK_GATE_ORIGIN = ISSUER;
+    try {
+      const token = await signToken(
+        key,
+        { sub: "user-1" },
+        { issuer: "https://somewhere-else.example.org", audience: "preview" },
+      );
+      const identity = await gateIdentityFromHeaders(
+        new Headers({ "x-grok-identity": token }),
+        fetchImpl,
+      );
+      assert.equal(identity, null);
+    } finally {
+      delete process.env.GROK_GATE_ORIGIN;
+    }
   });
 
   it("verifies a preview-audience token when only GROK_GATE_ORIGIN is set", async () => {
@@ -378,10 +384,23 @@ describe("gateIdentityFromHeaders", () => {
 });
 
 describe("gateIdentityEnabled", () => {
-  it("is enabled by default with no gate env vars", () => {
+  it("is off by default: a server that is not behind the Grok gateway never trusts the header", () => {
     delete process.env.GROK_PROJECT_ID;
     delete process.env.GROK_GATE_ORIGIN;
-    assert.equal(gateIdentityEnabled(), true);
+    assert.equal(gateIdentityEnabled(), false);
+  });
+
+  it("is on only when the gateway is configured", () => {
+    try {
+      process.env.GROK_GATE_ORIGIN = ISSUER;
+      assert.equal(gateIdentityEnabled(), true);
+      delete process.env.GROK_GATE_ORIGIN;
+      process.env.GROK_PROJECT_ID = "proj-123";
+      assert.equal(gateIdentityEnabled(), true);
+    } finally {
+      delete process.env.GROK_GATE_ORIGIN;
+      delete process.env.GROK_PROJECT_ID;
+    }
   });
 
   it("is disabled when VITE_AUTH_ENABLED is false", () => {

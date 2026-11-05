@@ -25,7 +25,9 @@ export type GrokProvider = {
   label: string;
 };
 
-export const GROK_PROVIDERS: readonly GrokProvider[] = [
-  { providerId: "grok-google", idp: "google", label: "Google" },
-  { providerId: "grok-x", idp: "twitter", label: "X" },
-];
+/**
+ * Empty: this site signs people in with its own email and password. The Google and X buttons went through a
+ * third-party broker (auth.grok.me) that a deployment of ours has no relationship with. Add entries here, and
+ * set GROK_AUTH_CLIENT_ID / GROK_AUTH_CLIENT_SECRET, only if a broker is deliberately set up.
+ */
+export const GROK_PROVIDERS: readonly GrokProvider[] = [];

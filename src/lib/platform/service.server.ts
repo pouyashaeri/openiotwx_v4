@@ -1,5 +1,6 @@
 /** Platform data access (server-only). Every function here is called behind a middleware that has already verified the caller. */
 import { getSql } from "@/lib/db";
+import { decideRole, emailList, isProduction } from "@/lib/security/policy";
 import { forgetKeys, ingestStats } from "./ingest.server";
 import { newStationKey, slugify } from "./keys.server";
 import { RANGES, type Range } from "./metrics";
@@ -10,40 +11,35 @@ export type Profile = { userId: string; email: string; name: string; role: Role;
 /** Anyone above a plain user: may use the admin console. */
 export const isStaff = (role: Role) => role !== "user";
 
-const emails = (name: string) =>
-  (process.env[name] ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
 /**
- * Create the caller's profile on first sight and resolve their role.
- * SUPERADMIN_EMAILS / ADMIN_EMAILS (comma lists) decide staff accounts. When
- * neither is set, the very first account to register becomes the super-admin so
- * a fresh install is never locked out. The environment can promote an account
- * but never demotes one; demotion is done in the console by a super-admin.
+ * Create the caller's profile on first sight and resolve their role (the rules are in security/policy.ts).
+ * Production: nobody is made an administrator here by being first or by typing an address; an administrator
+ * is made on purpose with scripts/make-admin.mjs, and the SUPERADMIN_EMAILS / ADMIN_EMAILS lists only count for
+ * an address that has been verified. Development keeps the old conveniences, so a fresh checkout still works.
+ * An account can be promoted from here but never demoted; demotion is done in the console by a super-admin.
  */
 export async function ensureProfile(userId: string): Promise<Profile> {
   const sql = await getSql();
-  const users = await sql<{ email: string; name: string }>`select email, name from "user" where id = ${userId}`;
+  const users = await sql<{ email: string; name: string; emailVerified: boolean | null }>`select email, name, "emailVerified" from "user" where id = ${userId}`;
   const u = users[0];
   if (!u) throw new Error("Unknown user");
-  const email = u.email.toLowerCase();
-  const supers = emails("SUPERADMIN_EMAILS");
-  const admins = emails("ADMIN_EMAILS");
-  const isSuper = supers.includes(email);
-  const isAdmin = admins.includes(email);
-  const unconfigured = supers.length === 0 && admins.length === 0;
+  const production = isProduction(process.env);
+  const superEmails = emailList(process.env.SUPERADMIN_EMAILS);
+  const adminEmails = emailList(process.env.ADMIN_EMAILS);
+  // Everything except the "first account" rule is decided here. That one is decided inside the insert, so two
+  // people registering at the same moment cannot both be first.
+  const decided = decideRole({ email: u.email, emailVerified: Boolean(u.emailVerified), superEmails, adminEmails, production, staffExists: true });
+  const firstAccountMayLead = !production && superEmails.length === 0 && adminEmails.length === 0;
   await sql`
     insert into profiles (user_id, email, name, role)
     values (${userId}, ${u.email}, ${u.name},
-      case when ${isSuper} then 'superadmin'
-           when ${isAdmin} then 'admin'
-           when ${unconfigured} and not exists (select 1 from profiles where role <> 'user') then 'superadmin'
+      case when ${decided}::text = 'superadmin' then 'superadmin'
+           when ${decided}::text = 'admin' then 'admin'
+           when ${firstAccountMayLead} and not exists (select 1 from profiles where role <> 'user') then 'superadmin'
            else 'user' end)
     on conflict (user_id) do nothing`;
-  if (isSuper) await sql`update profiles set role = 'superadmin' where user_id = ${userId} and role <> 'superadmin'`;
-  else if (isAdmin) await sql`update profiles set role = 'admin' where user_id = ${userId} and role = 'user'`;
+  if (decided === "superadmin") await sql`update profiles set role = 'superadmin' where user_id = ${userId} and role <> 'superadmin'`;
+  else if (decided === "admin") await sql`update profiles set role = 'admin' where user_id = ${userId} and role = 'user'`;
   const rows = await sql<{ user_id: string; email: string; name: string; role: Role; suspended: boolean }>`
     select user_id, email, name, role, suspended from profiles where user_id = ${userId}`;
   const p = rows[0];

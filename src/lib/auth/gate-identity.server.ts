@@ -26,8 +26,15 @@ export type GateJwks = { keys: JWK[] };
 
 export type JwksFetch = (url: string) => Promise<GateJwks | null>;
 
+/**
+ * The gate signs people in from a header (x-grok-identity) that the Grok platform's gateway adds and signs.
+ * Off unless that gateway is really in front of this server (GROK_GATE_ORIGIN or GROK_PROJECT_ID is set). On any
+ * other server the header is ignored. Without this, a server that is not behind the gateway would trust a
+ * signing key fetched from 127.0.0.1:6014, so whatever answered there could log in anyone, as anyone.
+ */
 export function gateIdentityEnabled(): boolean {
-  return env("VITE_AUTH_ENABLED") !== "false";
+  if (env("VITE_AUTH_ENABLED") === "false") return false;
+  return Boolean(env("GROK_GATE_ORIGIN") || env("GROK_PROJECT_ID"));
 }
 
 export function gateTokenAudience(): string {

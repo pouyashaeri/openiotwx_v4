@@ -117,6 +117,9 @@ export function PortalSection({ compact = false }: { compact?: boolean }) {
             className="h-[28rem] w-full bg-surface"
             loading="lazy"
             allowFullScreen
+            // The dashboard may run its own scripts, but it cannot navigate this page away.
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
+            referrerPolicy="no-referrer"
           />
         </div>
       ) : null}
