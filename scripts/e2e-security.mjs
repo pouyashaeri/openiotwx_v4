@@ -133,7 +133,12 @@ try {
   await up.getByLabel("Password").fill(PASSWORD);
   await up.getByRole("button", { name: /^create account$/i }).click();
   await up.waitForURL("**/account", { timeout: 25000 });
-  const session = (await userCtx.cookies()).find((c) => /session_token/.test(c.name));
+  // The browser stores the cookie a moment after the page changes, so wait for it instead of reading at once.
+  let session;
+  for (let i = 0; i < 20 && !session; i++) {
+    session = (await userCtx.cookies()).find((c) => /session_token/.test(c.name));
+    if (!session) await up.waitForTimeout(250);
+  }
   ok(Boolean(session) && session.httpOnly && session.secure && session.sameSite === "Lax" && session.name.startsWith("__Host-"), `session cookie: ${session?.name} HttpOnly=${session?.httpOnly} Secure=${session?.secure} SameSite=${session?.sameSite}`);
 
   await up.getByText("Add a station by hand").click();
