@@ -27,6 +27,8 @@
     "e2e:chat": "node scripts/e2e-chat.mjs",
     "e2e:support": "node scripts/e2e-support.mjs",
     "e2e:security": "node scripts/e2e-security.mjs",
+    "check:manifests": "node scripts/check-manifests.mjs",
+    "k8s:rehearse": "node deploy/k8s/rehearse.mjs",
     "gdex:release": "node scripts/gdex-release.mjs",
     "loadtest": "node scripts/loadtest.mjs",
     "format": "prettier --write ."

@@ -1,0 +1,41 @@
+# OPTIONAL: only the ingress controller (and pods in this namespace) may reach the app, and only the app, the migration
+# job and the backup job may reach the bundled database. Outgoing traffic is left open (the app calls public
+# services: the chat model, mail, the CHORDS importer). Needs a network plugin that enforces NetworkPolicy.
+#
+# Change the namespace label below to wherever the cluster's ingress controller runs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: openiotwx-app
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: openiotwx
+      app.kubernetes.io/component: app
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx # CHANGE-ME to the ingress controller's namespace
+        - podSelector: {}
+      ports:
+        - { port: 8080, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: openiotwx-db
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: openiotwx
+      app.kubernetes.io/component: db
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: openiotwx
+      ports:
+        - { port: 5432, protocol: TCP }

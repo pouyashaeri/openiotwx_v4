@@ -1,0 +1,29 @@
+# An Argo CD Application that keeps the cluster matching this repository. It is an EXAMPLE: ask whoever runs Argo CD
+# where it should live (it is usually created in Argo's own namespace, by them or through their repository), and
+# change every line marked CHANGE-ME. Nothing here is secret.
+#
+# What it does: Argo CD watches the folder below. When a commit changes it (for example a new image tag in the
+# overlay), Argo runs the migration job first (the PreSync hook), then rolls the Deployment out one pod at a time.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openiotwx
+  namespace: argocd # CHANGE-ME: where Argo CD keeps its Applications
+spec:
+  project: default # CHANGE-ME: the Argo CD project you were given
+  source:
+    repoURL: https://github.com/NCAR/OpenIoTwxNG.git
+    targetRevision: main
+    path: deploy/k8s/overlays/example # CHANGE-ME: your copy of the example overlay
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openiotwx # CHANGE-ME: the namespace you were given
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false # on a shared cluster the namespace is made for you
+      - PruneLast=true
+  # The Secret "openiotwx" is made outside git, so Argo must not delete it as "extra".
+  ignoreDifferences: []

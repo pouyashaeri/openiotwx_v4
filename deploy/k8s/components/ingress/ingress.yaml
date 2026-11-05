@@ -1,0 +1,24 @@
+# The public address. Stations and Pi gateways upload to it from the field over HTTPS, so it must be reachable from
+# wherever they are. The overlay sets the real host, the ingress class and the controller's own annotations.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openiotwx
+  annotations: {}
+spec:
+  ingressClassName: CHANGE-ME-ingress-class
+  tls:
+    - hosts:
+        - openiotwx.invalid
+      secretName: openiotwx-tls # made by cert-manager, or created by hand: whatever the cluster uses
+  rules:
+    - host: openiotwx.invalid
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: openiotwx
+                port:
+                  name: http

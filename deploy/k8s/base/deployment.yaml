@@ -1,0 +1,108 @@
+# The web app, the API and the station upload endpoint: one stateless image, run as many copies as you like.
+# Readings are buffered in memory for a fraction of a second and written in batches. The server flushes the
+# buffer when it is told to stop (SIGTERM), so a rolling update does not lose readings.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openiotwx
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openiotwx
+      app.kubernetes.io/component: app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openiotwx
+        app.kubernetes.io/component: app
+    spec:
+      serviceAccountName: openiotwx
+      automountServiceAccountToken: false
+      # Time to finish in-flight requests and flush the reading buffer before the pod is killed.
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000 # the "node" user the image runs as
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      # Spread the copies over nodes when there is more than one node.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: openiotwx
+              app.kubernetes.io/component: app
+      containers:
+        - name: app
+          image: openiotwx-app # set by the overlay (kustomize "images")
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          # Settings that are not secret: the ConfigMap. Secrets come from the Secret "openiotwx" (see secret.example.yaml).
+          envFrom:
+            - configMapRef:
+                name: openiotwx-config
+          env:
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: openiotwx, key: DATABASE_URL } }
+            - name: BETTER_AUTH_SECRET
+              valueFrom: { secretKeyRef: { name: openiotwx, key: BETTER_AUTH_SECRET } }
+            # Optional. Leave the key out of the Secret and the matching feature is simply off.
+            - name: HUB_TOKEN
+              valueFrom: { secretKeyRef: { name: openiotwx, key: HUB_TOKEN, optional: true } }
+            - name: INGEST_BRIDGE_TOKEN
+              valueFrom: { secretKeyRef: { name: openiotwx, key: INGEST_BRIDGE_TOKEN, optional: true } }
+            - name: GDEX_RELEASE_TOKEN
+              valueFrom: { secretKeyRef: { name: openiotwx, key: GDEX_RELEASE_TOKEN, optional: true } }
+            - name: SMTP_URL
+              valueFrom: { secretKeyRef: { name: openiotwx, key: SMTP_URL, optional: true } }
+            - name: ANTHROPIC_API_KEY
+              valueFrom: { secretKeyRef: { name: openiotwx, key: ANTHROPIC_API_KEY, optional: true } }
+            - name: CHAT_LLM_KEY
+              valueFrom: { secretKeyRef: { name: openiotwx, key: CHAT_LLM_KEY, optional: true } }
+          # Starting up can take a while on a cold node: give it up to a minute.
+          startupProbe:
+            httpGet: { path: /api/health, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          # Ready = the process is up AND the database answers. An unsafe production configuration fails here too.
+          readinessProbe:
+            httpGet: { path: /api/health, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Alive = the process accepts connections. It deliberately does NOT check the database: a database outage
+          # should take the pod out of service, not restart every copy over and over.
+          livenessProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              # Let the load balancer stop sending traffic before the server starts shutting down.
+              exec: { command: ["sleep", "5"] }
+          resources:
+            requests: { cpu: 200m, memory: 384Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 128Mi }

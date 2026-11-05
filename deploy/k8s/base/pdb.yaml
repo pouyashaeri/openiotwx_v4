@@ -1,0 +1,11 @@
+# A node drain may take one copy down at a time. (maxUnavailable, not minAvailable, so a single-copy install can still be drained.)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: openiotwx
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openiotwx
+      app.kubernetes.io/component: app

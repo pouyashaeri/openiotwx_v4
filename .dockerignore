@@ -4,3 +4,14 @@ node_modules
 *.log
 .env
 .data
+screenshots
+.tanstack
+.github
+docs
+infra
+deploy
+pi_gateway
+mock_station
+*.md
+.env.*
+!.env.example

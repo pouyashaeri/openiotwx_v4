@@ -1,0 +1,91 @@
+# OPTIONAL: a small Postgres inside the namespace, for when no shared database is provided.
+# Prefer a managed or shared Postgres when there is one (set DATABASE_URL in the Secret and leave this out).
+#
+# TimescaleDB image, like the Docker Compose file: readings become compressed hypertables when the extension is there.
+# The default database encoding is UTF-8, which the migrations need.
+#
+# The Secret "openiotwx-db" holds POSTGRES_PASSWORD; the app's DATABASE_URL must use the same password:
+#   postgres://iotwx:<password>@openiotwx-db:5432/iotwx
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: openiotwx-db
+spec:
+  serviceName: openiotwx-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openiotwx
+      app.kubernetes.io/component: db
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openiotwx
+        app.kubernetes.io/component: db
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsUser: 70 # the postgres user in the timescale (alpine) image
+        runAsGroup: 70
+        fsGroup: 70
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: timescale/timescaledb:2.17.2-pg16
+          ports:
+            - name: pg
+              containerPort: 5432
+          env:
+            - { name: POSTGRES_USER, value: iotwx }
+            - { name: POSTGRES_DB, value: iotwx }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: openiotwx-db, key: POSTGRES_PASSWORD } }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "iotwx", "-d", "iotwx"] }
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            exec: { command: ["pg_isready", "-U", "iotwx", "-d", "iotwx"] }
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { cpu: "2", memory: 2Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+            - { name: run, mountPath: /var/run/postgresql }
+            - { name: dshm, mountPath: /dev/shm }
+      volumes:
+        - name: run
+          emptyDir: {}
+        - name: dshm
+          emptyDir: { medium: Memory, sizeLimit: 256Mi }
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openiotwx-db
+spec:
+  clusterIP: None # headless: the StatefulSet's stable name
+  selector:
+    app.kubernetes.io/name: openiotwx
+    app.kubernetes.io/component: db
+  ports:
+    - name: pg
+      port: 5432
+      targetPort: pg

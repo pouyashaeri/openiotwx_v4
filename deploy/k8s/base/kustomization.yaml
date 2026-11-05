@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# No namespace here: the overlay chooses it (on a shared cluster the namespace is usually made for you).
+resources:
+  - serviceaccount.yaml
+  - deployment.yaml
+  - service.yaml
+  - pdb.yaml
+  - migrate-job.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: openiotwx
+      app.kubernetes.io/part-of: openiotwx
+    includeSelectors: false
+
+# Settings that are not secret. An overlay changes a value with another configMapGenerator entry (behavior: merge).
+# BETTER_AUTH_URL must be the public https address of the site; it is the only address allowed to sign in, and
+# the server refuses to run in production without a valid one. The placeholder below is deliberately unusable.
+configMapGenerator:
+  - name: openiotwx-config
+    literals:
+      - BETTER_AUTH_URL=https://openiotwx.invalid
+      - CHORDS_ALLOW_PRIVATE=0
+      - EJAM_URL=https://api.ejanalysis.com
+      - CIRRUS_ENABLED=0
+      - BOINC_PROJECT_URL=
+      - SUPPORT_EMAIL=
+      - SUPPORT_FROM=
+      - GDEX_CONTACT_EMAIL=
+      - INGEST_MAX_BUFFER=100000
+      - PG_POOL_MAX=20
+      - CHAT_LLM_ENDPOINT=
+      - CHAT_LLM_MODEL=
+      - CHAT_LLM_PER_10MIN=30
+      - CHAT_LLM_DAILY_CAP=3000
+
+# The image name is a placeholder; the overlay says where the real one lives.
+images:
+  - name: openiotwx-app
+    newName: openiotwx-app
+    newTag: local

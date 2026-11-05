@@ -1,5 +1,7 @@
 # Deploying OpenIoTwx safely
 
+On Kubernetes (NCAR CIRRUS)? Start with [CIRRUS.md](CIRRUS.md); this page is the security checklist it relies on.
+
 This is the checklist for running the site on a real server (Docker, or Kubernetes such as NCAR CIRRUS). Development (`npm run dev`) keeps its conveniences; **production does not**. Production means `NODE_ENV=production`, which the Docker image sets.
 
 ## What the server insists on

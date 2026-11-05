@@ -1,0 +1,47 @@
+# A starting point for a real cluster (for example NCAR CIRRUS). Copy this folder, then change every line marked CHANGE-ME.
+# Nothing here is secret. The Secret (database address, session secret, tokens) is made separately: see ../../secret.example.yaml.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: openiotwx # CHANGE-ME: the namespace you are given
+
+resources:
+  - ../../base
+
+components:
+  - ../../components/ingress
+  # - ../../components/postgres       # only if no shared Postgres is provided (then also create the Secret "openiotwx-db")
+  # - ../../components/backup         # a nightly dump on its own volume (needs a storage class)
+  # - ../../components/networkpolicy  # if the cluster enforces network policies
+
+images:
+  - name: openiotwx-app
+    newName: ghcr.io/ncar/openiotwxng # CHANGE-ME: where the CI workflow pushes the image
+    newTag: CHANGE-ME-commit-sha
+
+configMapGenerator:
+  - name: openiotwx-config
+    behavior: merge
+    literals:
+      # The public https address of the site. It is the only address allowed to sign in.
+      - BETTER_AUTH_URL=https://openiotwx.example.org # CHANGE-ME
+      - SUPPORT_EMAIL=
+      # - CHAT_LLM_ENDPOINT=http://ollama-server:11434/v1   # if the cluster's ollama-server may be used
+      # - CHAT_LLM_MODEL=qwen2.5:3b
+
+patches:
+  - target: { kind: Ingress, name: openiotwx }
+    patch: |-
+      - op: replace
+        path: /spec/ingressClassName
+        value: nginx # CHANGE-ME
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: openiotwx.example.org # CHANGE-ME
+      - op: replace
+        path: /spec/rules/0/host
+        value: openiotwx.example.org # CHANGE-ME
+      # Controller-specific settings (for example cert-manager) go here as annotations:
+      # - op: add
+      #   path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      #   value: letsencrypt

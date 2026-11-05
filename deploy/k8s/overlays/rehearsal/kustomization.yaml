@@ -1,0 +1,27 @@
+# A full install on a local Kubernetes (Docker Desktop), to find mistakes before the real cluster does.
+# Run it with deploy/k8s/rehearse.sh. It uses the locally built image openiotwx-app:local, a bundled Postgres, and the
+# nightly backup, and is reached with `kubectl port-forward`, so no ingress is needed.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: openiotwx-rehearsal
+
+resources:
+  - ../../base
+  - namespace.yaml
+
+components:
+  - ../../components/postgres
+  - ../../components/backup
+
+images:
+  - name: openiotwx-app
+    newName: openiotwx-app
+    newTag: local
+
+configMapGenerator:
+  - name: openiotwx-config
+    behavior: merge
+    literals:
+      # http is allowed only for localhost. The rehearsal reaches the site through a port-forward on this port.
+      - BETTER_AUTH_URL=http://localhost:8099

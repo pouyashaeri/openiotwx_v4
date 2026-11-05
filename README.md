@@ -1,7 +1,7 @@
 # OpenIoTwx
 
 Plan a weather station with the wizard, save the plan to an account, register the stations, and
-collect their data on a server you run. Design notes: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). What replaced the legacy mesonet services: [docs/LEGACY-MAPPING.md](docs/LEGACY-MAPPING.md). Getting station data into the NSF NCAR GDEX archive (CF-compliant releases, consent, the pull manifest): [docs/GDEX.md](docs/GDEX.md). Contact and support (the /contact page, the support email, the admin inbox): [docs/SUPPORT.md](docs/SUPPORT.md). The planning chat, its optional language model and how it matches the survey: [docs/CHAT.md](docs/CHAT.md). Putting it on a real server safely (required settings, making the first administrator, what is switched on and off): [docs/DEPLOY.md](docs/DEPLOY.md).
+collect their data on a server you run. Design notes: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). What replaced the legacy mesonet services: [docs/LEGACY-MAPPING.md](docs/LEGACY-MAPPING.md). Getting station data into the NSF NCAR GDEX archive (CF-compliant releases, consent, the pull manifest): [docs/GDEX.md](docs/GDEX.md). Contact and support (the /contact page, the support email, the admin inbox): [docs/SUPPORT.md](docs/SUPPORT.md). The planning chat, its optional language model and how it matches the survey: [docs/CHAT.md](docs/CHAT.md). Putting it on a real server safely (required settings, making the first administrator, what is switched on and off): [docs/DEPLOY.md](docs/DEPLOY.md). Running it on Kubernetes (NCAR CIRRUS): the image, the Kubernetes files, CI, Argo CD, the runbook and what we assumed: [docs/CIRRUS.md](docs/CIRRUS.md).
 
 ## What is in it
 
