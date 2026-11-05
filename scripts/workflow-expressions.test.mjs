@@ -33,3 +33,20 @@ for (const file of files) {
     assert.equal((text.match(/\$\{\{/g) ?? []).length, (text.match(/\}\}/g) ?? []).length);
   });
 }
+
+// An action from outside GitHub and Docker runs with access to the build, and a tag can be moved after the fact.
+// So anything else must be pinned to a full commit, which cannot.
+const TRUSTED_OWNERS = new Set(["actions", "docker"]);
+for (const file of files) {
+  test(`${file}: third-party actions are pinned to a full commit`, () => {
+    const text = readFileSync(join(dir, file), "utf8");
+    const loose = [];
+    for (const [, ref] of text.matchAll(/^\s*(?:-\s*)?uses:\s*([^\s#]+)/gm)) {
+      const [name, version = ""] = ref.split("@");
+      if (name.startsWith("./")) continue;
+      if (TRUSTED_OWNERS.has(name.split("/")[0])) continue;
+      if (!/^[0-9a-f]{40}$/.test(version)) loose.push(ref);
+    }
+    assert.deepEqual(loose, [], `pin these to a full commit: ${loose.join(", ")}`);
+  });
+}

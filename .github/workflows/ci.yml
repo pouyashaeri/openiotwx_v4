@@ -87,7 +87,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Scan the image
-        uses: aquasecurity/trivy-action@0.28.0
+        # Pinned to the exact commit of v0.36.0, not the tag: a tag can be moved after the fact, and this action
+        # runs with access to the build. To update, look up the commit of a newer release and change it here.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ env.IMAGE }}:${{ github.sha }}
           severity: CRITICAL
