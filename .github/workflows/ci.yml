@@ -95,11 +95,15 @@ jobs:
           exit-code: "1"
 
       # Only commits on main are published, never pull requests.
+      - name: Work out the registry from the image name
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        # ghcr.io/ncar/openiotwxng -> ghcr.io. (GitHub expressions have no string-splitting function, so the shell does it.)
+        run: echo "REGISTRY=${IMAGE%%/*}" >> "$GITHUB_ENV"
       - name: Log in to the registry
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
-          registry: ${{ vars.IMAGE_REPO != '' && split(vars.IMAGE_REPO, '/')[0] || 'ghcr.io' }}
+          registry: ${{ env.REGISTRY }}
           username: ${{ secrets.REGISTRY_USERNAME != '' && secrets.REGISTRY_USERNAME || github.actor }}
           password: ${{ secrets.REGISTRY_PASSWORD != '' && secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
       - name: Publish
