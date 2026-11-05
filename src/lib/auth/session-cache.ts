@@ -8,7 +8,7 @@
  * So the cache cookie is simply never read. Every session lookup goes through the
  * session token to the database, which always names the right person.
  */
-const CACHE_COOKIES = ["__Host-grok-auth.session_data", "__Host-grok-auth.account_data"];
+const CACHE_COOKIES = ["__Host-openiotwx.session_data", "__Host-openiotwx.account_data"];
 
 export function withoutSessionCache(headers: Headers): Headers {
   const cookie = headers.get("cookie");

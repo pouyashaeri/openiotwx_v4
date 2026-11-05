@@ -42,9 +42,9 @@ An administrator is made on purpose, by someone with access to the server:
 
 `node scripts/make-admin.mjs --list` shows who has a role. Every change made with the command is written to the audit log. A super-admin can then make and remove ordinary administrators in the Admin panel. Super-admins are only made with the command.
 
-## What is switched off
+## What is not there
 
-- **The Grok sign-in code.** The Google and X buttons went through a third-party broker, and the repository carried a client secret for it. The secret and the trust of `*.grok-sandbox.com` hosts are removed. The "gate identity" header (`x-grok-identity`) is ignored unless `GROK_GATE_ORIGIN` or `GROK_PROJECT_ID` is set, which it never is here. Sign-in is the site's own email and password.
+- **The Grok sign-in code is deleted, not just switched off.** The Google and X buttons went through a third-party broker (auth.grok.me), and the code the site came from carried a client secret for it, trusted `*.grok-sandbox.com` hosts, accepted a login from a header (`x-grok-identity`) that the Grok platform's gateway signs, and accepted session tokens in an `Authorization: Bearer` header for its live preview. None of that is in the code any more. Sign-in is the site's own email and password, with the session in a cookie. (The tests still check that the old `x-grok-identity` header creates no session.)
 - **Localhost origins.** In production only `BETTER_AUTH_URL` may sign in.
 - **Raw error text on the open health route.** Errors go to the log.
 
@@ -76,6 +76,5 @@ An administrator is made on purpose, by someone with access to the server:
 ## Known limits
 
 - **Email is not verified.** There is no verification email, so an address is not proof of identity. That is why administrators are made with the command and not by address.
-- **better-auth advisory (GHSA-44jh-23m7-hpcf):** concurrent requests can exceed a rate limit when counters are stored in the database. This site keeps them in memory, so it is not affected. `npm audit` still lists it. Clearing it means moving to better-auth 1.7, which removed pieces the old Grok sign-in code uses, so that code has to be deleted first.
 - **The CHORDS importer** refuses private addresses and re-checks every redirect, but it resolves the name before connecting. Run the app in a network that cannot reach internal services it should not.
 - **Node.** Use Node 22 (the image does). Vite warns on Node 20.17.

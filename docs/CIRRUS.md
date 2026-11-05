@@ -81,4 +81,3 @@ Each assumption is one setting. Nothing here is hard-wired.
 - Email verification and password reset (they need an outgoing mail server).
 - Single sign-on for administrators.
 - Metrics and alerting. The pods log to standard output and answer `/api/health`; wire those into the cluster's monitoring.
-- Removing the leftover Grok sign-in code so `better-auth` can be upgraded (see DEPLOY.md, "Known limits").

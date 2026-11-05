@@ -1277,10 +1277,7 @@
   (function () {
     var slot = document.getElementById('acct');
     if (!slot) return;
-    var token = null;
-    try { token = sessionStorage.getItem('grok-auth.bearer-token'); } catch (e) {}
     var headers = { 'content-type': 'application/json' };
-    if (token) headers.Authorization = 'Bearer ' + token;
     // The last answer is remembered, so the header never blinks while the session is checked.
     var KEY = 'openiotwx-acct';
     function show(inn) {
@@ -1296,7 +1293,6 @@
       fetch('/api/auth/sign-out', { method: 'POST', credentials: 'include', headers: headers, body: '{}' })
         .catch(function () {})
         .then(function () {
-          try { sessionStorage.removeItem('grok-auth.bearer-token'); } catch (e) {}
           remember('out');
           location.reload();
         });
