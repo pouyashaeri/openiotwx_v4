@@ -8,13 +8,14 @@ const MAX_PAST_MS = 30 * 24 * 3600_000;
 
 export type Row = { t: number; station: string; metric: string; value: number };
 
+// Plain fields, not constructor parameter properties: Node's built-in TypeScript mode (what `npm test` uses) cannot run those.
 export class IngestError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-    readonly retryAfter?: number,
-  ) {
+  readonly status: number;
+  readonly retryAfter?: number;
+  constructor(status: number, message: string, retryAfter?: number) {
     super(message);
+    this.status = status;
+    this.retryAfter = retryAfter;
   }
 }
 
